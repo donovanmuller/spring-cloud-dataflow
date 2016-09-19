@@ -1,0 +1,234 @@
+/*
+ * Copyright 2015-2016 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.springframework.cloud.dataflow.core;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.cloud.dataflow.core.dsl.AppNode;
+import org.springframework.cloud.dataflow.core.dsl.ArgumentNode;
+import org.springframework.cloud.dataflow.core.dsl.StandaloneParser;
+import org.springframework.cloud.deployer.spi.core.AppDefinition;
+import org.springframework.core.style.ToStringCreator;
+
+/**
+ * Based on {@link TaskDefinition}
+ */
+public class StandaloneDefinition extends DataFlowAppDefinition {
+
+	/**
+	 * DSL text for the module.
+	 */
+	private final String dslText;
+
+	public StandaloneDefinition(String registeredAppName, String dsl) {
+		this.dslText = dsl;
+		AppNode standaloneNode = new StandaloneParser(registeredAppName, dsl).parse();
+		setRegisteredAppName(registeredAppName);
+		Map<String, String> properties = new HashMap<>();
+		if (standaloneNode.hasArguments()) {
+			for (ArgumentNode argumentNode : standaloneNode.getArguments()) {
+				properties.put(argumentNode.getName(), argumentNode.getValue());
+			}
+		}
+		this.appDefinition = new AppDefinition(standaloneNode.getName(), properties);
+	}
+
+	StandaloneDefinition(String registeredAppName, String label, Map<String, String> properties) {
+		super(registeredAppName, label, properties);
+		this.dslText = "";
+	}
+
+	public String getDslText() {
+		return dslText;
+	}
+
+	@Override
+	public String toString() {
+		return new ToStringCreator(this)
+				.append("dslText", this.dslText)
+				.append("appDefinition", this.appDefinition).toString();
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((dslText == null) ? 0 : dslText.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		StandaloneDefinition other = (StandaloneDefinition) obj;
+		if (dslText == null) {
+			if (other.dslText != null)
+				return false;
+		} else if (!dslText.equals(other.dslText))
+			return false;
+		return true;
+	}
+
+    /**
+	 * Builder object for {@code StandaloneDefinition}.
+	 * This object is mutable to allow for flexibility in specifying application
+	 * fields/properties during parsing.
+	 */
+	public static class Builder {
+
+		/**
+		 * @see DataFlowAppDefinition#registeredAppName
+		 */
+		private String registeredAppName;
+
+		/**
+		 * @see AppDefinition#getName()
+		 */
+		private String label;
+
+		/**
+		 * @see AppDefinition#getProperties()
+		 */
+		private final Map<String, String> properties = new HashMap<String, String>();
+
+		/**
+		 * Create a new builder that is initialized with properties of the given definition.
+		 * Useful for "mutating" a definition by building a slightly different copy.
+		 */
+		public static Builder from(DataFlowAppDefinition definition) {
+			Builder builder = new Builder();
+			builder.setRegisteredAppName(definition.getRegisteredAppName())
+				.setLabel(definition.getName())
+				.addProperties(definition.getProperties());
+			return builder;
+		}
+
+
+		/**
+		 * Set the name of the app in the registry.
+		 *
+		 * @param registeredAppName name of app in registry
+		 * @return this builder object
+		 *
+		 * @see DataFlowAppDefinition#registeredAppName
+		 */
+		public Builder setRegisteredAppName(String registeredAppName) {
+			this.registeredAppName = registeredAppName;
+			return this;
+		}
+
+		/**
+		 * Set the app label.
+		 *
+		 * @param label name of app label
+		 * @return this builder object
+		 *
+		 * @see DataFlowAppDefinition#label
+		 */
+		public Builder setLabel(String label) {
+			this.label = label;
+			return this;
+		}
+
+		/**
+		 * Set an app property.
+		 *
+		 * @param name property name
+		 * @param value property value
+		 * @return this builder object
+		 *
+		 * @see AppDefinition#getProperties()
+		 */
+		public Builder setProperty(String name, String value) {
+			this.properties.put(name, value);
+			return this;
+		}
+
+		/**
+		 * Add the contents of the provided map to the map of app properties.
+		 *
+		 * @param properties app properties
+		 * @return this builder object
+		 *
+		 * @see AppDefinition#getProperties()
+		 */
+		public Builder addProperties(Map<String, String> properties) {
+			this.properties.putAll(properties);
+			return this;
+		}
+
+		/**
+		 * Return name of standalone app in registry.
+		 *
+		 * @return standalone app name in registry
+		 */
+		public String getRegisteredAppName() {
+			return registeredAppName;
+		}
+
+		/**
+		 * Return symbolic name of a standalone application. If not provided, it will be the same as the standalone application name.
+		 *
+		 * @return app label
+		 */
+		public String getLabel() {
+			return label;
+		}
+
+		/**
+		 * Return properties for the standalone application.
+		 * Note that the contents of this map are <b>mutable</b>.
+		 *
+		 * @return map of app properties
+		 */
+		public Map<String, String> getProperties() {
+			return properties;
+		}
+
+		/**
+		 * Sets standalone application properties.
+		 *
+		 * @param properties standalone application properties
+		 * @return this builder object
+		 *
+		 * @see AppDefinition#getProperties()
+		 */
+		public StandaloneDefinition.Builder setProperties(Map<String, String> properties) {
+			this.properties.clear();
+			this.addProperties(properties);
+			return this;
+		}
+
+		/**
+		 * Return a new instance of {@link StandaloneDefinition}.
+		 *
+		 * @return new instance of {@code StandaloneDefinition}
+		 */
+		public StandaloneDefinition build(String name) {
+			if (this.label == null) {
+				this.label = name;
+			}
+			return new StandaloneDefinition(this.registeredAppName, this.label, this.properties);
+		}
+	}
+}

@@ -27,6 +27,8 @@ public class FeaturesProperties {
 
     public static final String FEATURES_PREFIX = "spring.cloud.dataflow.features";
 
+    public static final String STANDALONE_ENABLED = "standalone-enabled";
+
     public static final String STREAMS_ENABLED = "streams-enabled";
 
     public static final String TASKS_ENABLED = "tasks-enabled";
@@ -34,6 +36,8 @@ public class FeaturesProperties {
     public static final String ANALYTICS_ENABLED = "analytics-enabled";
 
     private boolean analyticsEnabled = true;
+
+    private boolean standaloneEnabled = false;
 
     private boolean streamsEnabled = true;
 
@@ -45,6 +49,14 @@ public class FeaturesProperties {
 
     public void setAnalyticsEnabled(boolean analyticsEnabled) {
         this.analyticsEnabled = analyticsEnabled;
+    }
+
+    public boolean isStandaloneEnabled() {
+        return standaloneEnabled;
+    }
+
+    public void setStandaloneEnabled(final boolean standaloneEnabled) {
+        this.standaloneEnabled = standaloneEnabled;
     }
 
     public boolean isStreamsEnabled() {
