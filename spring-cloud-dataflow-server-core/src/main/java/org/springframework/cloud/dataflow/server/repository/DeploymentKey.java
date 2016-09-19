@@ -16,6 +16,7 @@
 
 package org.springframework.cloud.dataflow.server.repository;
 
+import org.springframework.cloud.dataflow.core.StandaloneDefinition;
 import org.springframework.cloud.dataflow.core.StreamAppDefinition;
 import org.springframework.cloud.dataflow.core.TaskDefinition;
 import org.springframework.util.Assert;
@@ -25,8 +26,19 @@ import org.springframework.util.Assert;
  *
  * @author Janne Valkealahti
  * @author Mark Fisher
+ * @author Donovan Muller
  */
 public abstract class DeploymentKey {
+
+	/**
+	 * Determines a deployment key for a standalone application.
+	 *
+	 * @param standaloneDefinition the standalone application definition
+	 */
+	public static String forStandaloneAppDefinition(StandaloneDefinition standaloneDefinition) {
+		Assert.notNull(standaloneDefinition, "standaloneDefinition must not be null");
+		return String.format("%s.%s", standaloneDefinition.getRegisteredAppName(), standaloneDefinition.getName());
+	}
 
 	/**
 	 * Determines a deployment key for a stream application.

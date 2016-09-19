@@ -22,6 +22,7 @@ package org.springframework.cloud.dataflow.core;
  * @author Patrick Peralta
  * @author Eric Bottard
  * @author Mark Fisher
+ * @author Donovan Muller
  */
 public enum ApplicationType {
 
@@ -43,6 +44,10 @@ public enum ApplicationType {
 	/**
 	 * An application type to execute a short-lived process.
 	 */
-	task;
+	task,
 
+	/**
+	 * An application type to run standalone applications.
+	 */
+	standalone;
 }

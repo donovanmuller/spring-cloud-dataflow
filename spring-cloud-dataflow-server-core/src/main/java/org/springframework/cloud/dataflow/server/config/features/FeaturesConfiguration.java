@@ -34,10 +34,10 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
  * holds any common beans on the above configuration classes.
  *
  * @author Ilayaperumal Gopinathan
+ * @author Donovan Muller
  */
 @Configuration
-@Import({ AnalyticsConfiguration.class, StreamConfiguration.class,
-		TaskConfiguration.class })
+@Import({ AnalyticsConfiguration.class, StandaloneConfiguration.class, StreamConfiguration.class, TaskConfiguration.class })
 public class FeaturesConfiguration {
 
 	@Autowired
@@ -45,10 +45,10 @@ public class FeaturesConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	@ConditionalOnExpression("#{'${" + FeaturesProperties.FEATURES_PREFIX + "."
-			+ FeaturesProperties.STREAMS_ENABLED + ":true}'.equalsIgnoreCase('true') || "
-			+ "'${" + FeaturesProperties.FEATURES_PREFIX + "."
-			+ FeaturesProperties.TASKS_ENABLED + ":true}'.equalsIgnoreCase('true') }")
+	@ConditionalOnExpression("#{'${" + FeaturesProperties.FEATURES_PREFIX + "." + FeaturesProperties.STREAMS_ENABLED
+			+ ":true}'.equalsIgnoreCase('true') || " + "'${" + FeaturesProperties.FEATURES_PREFIX + "."
+			+ FeaturesProperties.TASKS_ENABLED + ":true}'.equalsIgnoreCase('true') || '${" + FeaturesProperties.FEATURES_PREFIX + "."
+			+ FeaturesProperties.STANDALONE_ENABLED + ":true}'.equalsIgnoreCase('true')}")
 	public DeploymentIdRepository deploymentIdRepository(DataSource dataSource) {
 		return new RdbmsDeploymentIdRepository(dataSource);
 	}
