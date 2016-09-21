@@ -23,6 +23,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.dataflow.core.ApplicationGroupAppDefinition;
 import org.springframework.cloud.dataflow.core.ApplicationGroupDefinition;
+import org.springframework.cloud.dataflow.core.StandaloneDefinition;
+import org.springframework.cloud.dataflow.core.StreamDefinition;
 import org.springframework.cloud.dataflow.registry.AppRegistry;
 import org.springframework.cloud.dataflow.rest.resource.ApplicationGroupDefinitionResource;
 import org.springframework.cloud.dataflow.server.repository.ApplicationGroupDefinitionRepository;
@@ -70,26 +72,11 @@ public class ApplicationGroupDefinitionController {
 	 */
 	private final ApplicationGroupDefinitionRepository repository;
 
-	/**
-	 * The repository this controller will use for deployment IDs.
-	 */
-	private final DeploymentIdRepository deploymentIdRepository;
-
 	private final StreamDefinitionRepository streamDefinitionRepository;
 
 	private final TaskDefinitionRepository taskDefinitionRepository;
 
 	private final StandaloneDefinitionRepository standaloneDefinitionRepository;
-
-	/**
-	 * The deployer this controller will use to compute the application group deployment status.
-	 */
-	private final AppDeployer deployer;
-
-	/**
-	 * The app registry this controller will use to lookup apps.
-	 */
-	private final AppRegistry appRegistry;
 
 	/**
 	 * Assembler for {@link ApplicationGroupDefinitionResource} objects.
@@ -109,41 +96,41 @@ public class ApplicationGroupDefinitionController {
 	 * Create a {@code ApplicationGroupDefinitionController} that delegates
 	 * <ul>
 	 * <li>CRUD operations to the provided {@link ApplicationGroupDefinitionRepository}</li>
-	 * <li>deployment ID operations to the provided {@link DeploymentIdRepository}</li>
-	 * <li>deployment operations to the provided {@link ApplicationGroupDefinitionRepository}</li>
-	 * <li>deployment status computation to the provided {@link AppDeployer}</li>
+	 * <li>Stream CRUD operations to the provided {@link StreamDefinitionRepository}</li>
+	 * <li>Task CRUD operations to the provided {@link TaskDefinitionRepository}</li>
+	 * <li>Standalone deployment ID operations to the provided {@link StandaloneDefinitionRepository}</li>
+	 * <li>deployment operations to the provided {@link ApplicationGroupDeploymentController}</li>
+	 * <li>resourceLoader resourceLoader to validate Maven artifacts
+	 * <li>service to facilitate application group registration via {@link ApplicationGroupRegistryService}</li>
 	 * </ul>
 	 * @param repository           the repository this controller will use for application group CRUD operations
-	 * @param deploymentIdRepository the repository this controller will use for deployment IDs
-	 * @param streamDefinitionRepository
-	 * @param taskDefinitionRepository
-	 * @param standaloneDefinitionRepository
+	 * @param streamDefinitionRepository the stream repository this controller will use for application group CRUD operations
+	 * @param taskDefinitionRepository the task repository this controller will use for application group CRUD operations
+	 * @param standaloneDefinitionRepository the standalone repository this controller will use for application group CRUD operations
 	 * @param deploymentController the deployment controller to delegate deployment operations
-	 * @param deployer             the deployer this controller will use to compute deployment status
-	 * @param appRegistry          the app registry to look up registered apps
-	 * @param resourceLoader
-	 * @param applicationGroupRegistryService
+	 * @param resourceLoader resourceLoader to validate Maven artifacts
+	 * @param applicationGroupRegistryService service to facilitate application group registration
 	 */
-	public ApplicationGroupDefinitionController(ApplicationGroupDefinitionRepository repository, DeploymentIdRepository deploymentIdRepository,
-                                                StreamDefinitionRepository streamDefinitionRepository, TaskDefinitionRepository taskDefinitionRepository,
-                                                StandaloneDefinitionRepository standaloneDefinitionRepository, ApplicationGroupDeploymentController deploymentController,
-                                                AppDeployer deployer, AppRegistry appRegistry,
-                                                ResourceLoader resourceLoader, ApplicationGroupRegistryService applicationGroupRegistryService) {
+	public ApplicationGroupDefinitionController(
+			ApplicationGroupDefinitionRepository repository,
+			StreamDefinitionRepository streamDefinitionRepository,
+			TaskDefinitionRepository taskDefinitionRepository,
+			StandaloneDefinitionRepository standaloneDefinitionRepository,
+			ApplicationGroupDeploymentController deploymentController,
+			ResourceLoader resourceLoader,
+			ApplicationGroupRegistryService applicationGroupRegistryService) {
 		Assert.notNull(repository, "StandaloneDefinitionRepository must not be null");
-		Assert.notNull(deploymentIdRepository, "DeploymentIdRepository must not be null");
+		Assert.notNull(streamDefinitionRepository, "StreamDefinitionRepository must not be null");
+		Assert.notNull(taskDefinitionRepository, "TaskDefinitionRepository must not be null");
+		Assert.notNull(standaloneDefinitionRepository, "StandaloneDefinitionRepository must not be null");
 		Assert.notNull(deploymentController, "StandaloneDeploymentController must not be null");
-		Assert.notNull(deployer, "AppDeployer must not be null");
-		Assert.notNull(appRegistry, "AppRegistry must not be null");
 		Assert.notNull(resourceLoader, "ResourceLoader must not be null");
-		Assert.notNull(applicationGroupRegistryService, "ApplicationGroupRegistryService must not be null");
+		Assert.notNull(applicationGroupRegistryService,	"ApplicationGroupRegistryService must not be null");
 		this.repository = repository;
 		this.streamDefinitionRepository = streamDefinitionRepository;
 		this.taskDefinitionRepository = taskDefinitionRepository;
 		this.standaloneDefinitionRepository = standaloneDefinitionRepository;
 		this.deploymentController = deploymentController;
-		this.deploymentIdRepository = deploymentIdRepository;
-		this.deployer = deployer;
-		this.appRegistry = appRegistry;
 		this.resourceLoader = resourceLoader;
 		this.applicationGroupRegistryService = applicationGroupRegistryService;
 	}
@@ -236,10 +223,25 @@ public class ApplicationGroupDefinitionController {
 	@RequestMapping(value = "/{name}", method = RequestMethod.DELETE)
 	@ResponseStatus(HttpStatus.OK)
 	public void delete(@PathVariable("name") String name) {
-		if (repository.findOne(name) == null) {
+		ApplicationGroupDefinition applicationGroup = repository.findOne(name);
+		if (applicationGroup == null) {
 			throw new NoSuchApplicationGroupDefinitionException(name);
 		}
 		deploymentController.undeploy(name);
+		for (ApplicationGroupAppDefinition appDefinition : applicationGroup.getAppDefinitions()) {
+			switch (appDefinition.getDefinitionType()) {
+				case stream: {
+					StreamDefinition streamDefinition = streamDefinitionRepository.findOne(appDefinition.getDefinitionName());
+					streamDefinitionRepository.delete(streamDefinition);
+				} break;
+				case task: {
+				} break;
+				case standalone: {
+					StandaloneDefinition standaloneDefinition = standaloneDefinitionRepository.findOne(appDefinition.getDefinitionName());
+					standaloneDefinitionRepository.delete(standaloneDefinition);
+				} break;
+			}
+		}
 		this.repository.delete(name);
 	}
 
@@ -257,15 +259,18 @@ public class ApplicationGroupDefinitionController {
 		return assembler.toResource(definition);
 	}
 
-//	/**
-//	 * Request removal of all application group definitions.
-//	 */
-//	@RequestMapping(value = "", method = RequestMethod.DELETE)
-//	@ResponseStatus(HttpStatus.OK)
-//	public void deleteAll() throws Exception {
-//		deploymentController.undeployAll();
-//		this.repository.deleteAll();
-//	}
+	/**
+	 * Request removal of all application group definitions.
+	 */
+	@RequestMapping(value = "", method = RequestMethod.DELETE)
+	@ResponseStatus(HttpStatus.OK)
+	public void deleteAll() throws Exception {
+		deploymentController.undeployAll();
+		Iterable<ApplicationGroupDefinition> applicationGroups = this.repository.findAll();
+		for (ApplicationGroupDefinition applicationGroup : applicationGroups) {
+			delete(applicationGroup.getName());
+		}
+	}
 
 	/**
 	 * Return a string that describes the state of the given application group.

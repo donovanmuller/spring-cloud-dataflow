@@ -23,7 +23,6 @@ import java.util.UUID;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.springframework.cloud.dataflow.configuration.metadata.ApplicationConfigurationMetadataResolver;
 import org.springframework.cloud.dataflow.core.ApplicationGroupAppDefinition;
 import org.springframework.cloud.dataflow.core.ApplicationGroupDefinition;
 import org.springframework.cloud.dataflow.core.StandaloneDefinition;
@@ -31,7 +30,6 @@ import org.springframework.cloud.dataflow.core.StreamDefinition;
 import org.springframework.cloud.dataflow.registry.AppRegistry;
 import org.springframework.cloud.dataflow.rest.resource.ApplicationGroupDeploymentResource;
 import org.springframework.cloud.dataflow.rest.util.DeploymentPropertiesUtils;
-import org.springframework.cloud.dataflow.server.config.apps.CommonApplicationProperties;
 import org.springframework.cloud.dataflow.server.repository.ApplicationGroupDefinitionRepository;
 import org.springframework.cloud.dataflow.server.repository.DeploymentIdRepository;
 import org.springframework.cloud.dataflow.server.repository.NoSuchApplicationGroupDefinitionException;
@@ -77,23 +75,6 @@ public class ApplicationGroupDeploymentController {
 	 */
 	private final DeploymentIdRepository deploymentIdRepository;
 
-	/**
-	 * The app registry this controller will use to lookup apps.
-	 */
-	private final AppRegistry registry;
-
-	/**
-	 * The deployer this controller will use to deploy stream apps.
-	 */
-	private final AppDeployer deployer;
-
-	private final ApplicationConfigurationMetadataResolver metadataResolver;
-
-	/**
-	 * General properties to be applied to applications on deployment.
-	 */
-	private final CommonApplicationProperties commonApplicationProperties;
-
 	private final StreamDeploymentController streamDeploymentController;
 
 	private final TaskDeploymentController taskDeploymentController;
@@ -104,45 +85,44 @@ public class ApplicationGroupDeploymentController {
 	 * Create a {@code StandaloneDeploymentController} that delegates
 	 * <ul>
 	 * <li>CRUD operations to the provided {@link ApplicationGroupDefinitionRepository}</li>
-	 * <li>app retrieval to the provided {@link AppRegistry}</li>
-	 * <li>deployment operations to the provided {@link AppDeployer}</li>
+	 * <li>Stream CRUD operations to the provided {@link StreamDefinitionRepository}</li>
+	 * <li>Task CRUD operations to the provided {@link TaskDefinitionRepository}</li>
+	 * <li>Standalone deployment ID operations to the provided {@link StandaloneDefinitionRepository}</li>
+	 * <li>Stream deployments provided via {@link StreamDeploymentController}</li>
+	 * <li>Task (potentially) deployments provided via {@link TaskDeploymentController}</li>
+	 * <li>Standalone deployments provided via {@link StandaloneDeploymentController}</li>
 	 * </ul>
-	 * @param repository             the repository this controller will use for application group CRUD operations
+	 * @param repository the repository this controller will use for application group CRUD operations
+	 * @param streamDefinitionRepository the stream repository this controller will use for application group CRUD operations
+	 * @param taskDefinitionRepository the task repository this controller will use for application group CRUD operations
+	 * @param standaloneDefinitionRepository the standalone repository this controller will use for application group CRUD operations
 	 * @param deploymentIdRepository the repository this controller will use for deployment IDs
-	 * @param registry               the registry this controller will use to lookup apps
-	 * @param deployer               the deployer this controller will use to deploy standalone apps
-	 * @param commonProperties       common set of application properties
-	 * @param streamDeploymentController
-	 * @param taskDeploymentController
-	 * @param standaloneDeploymentController
+	 * @param streamDeploymentController stream controller to facilitate stream deployments
+	 * @param taskDeploymentController task controller to facilitate task deployments
+	 * @param standaloneDeploymentController standalone controller to facilitate standalone deployments
 	 */
-    public ApplicationGroupDeploymentController(ApplicationGroupDefinitionRepository repository,
-            StreamDefinitionRepository streamDefinitionRepository,
-            TaskDefinitionRepository taskDefinitionRepository,
-            StandaloneDefinitionRepository standaloneDefinitionRepository,
-            DeploymentIdRepository deploymentIdRepository,
-            AppRegistry registry,
-            AppDeployer deployer,
-            ApplicationConfigurationMetadataResolver metadataResolver,
-            CommonApplicationProperties commonProperties,
-            StreamDeploymentController streamDeploymentController,
-            TaskDeploymentController taskDeploymentController,
-            StandaloneDeploymentController standaloneDeploymentController) {
-        Assert.notNull(repository, "ApplicationGroupDefinitionRepository must not be null");
+	public ApplicationGroupDeploymentController(
+			ApplicationGroupDefinitionRepository repository,
+			StreamDefinitionRepository streamDefinitionRepository,
+			TaskDefinitionRepository taskDefinitionRepository,
+			StandaloneDefinitionRepository standaloneDefinitionRepository,
+			DeploymentIdRepository deploymentIdRepository,
+			StreamDeploymentController streamDeploymentController,
+			TaskDeploymentController taskDeploymentController,
+			StandaloneDeploymentController standaloneDeploymentController) {
+		Assert.notNull(repository, "ApplicationGroupDefinitionRepository must not be null");
+        Assert.notNull(streamDefinitionRepository, "StreamDefinitionRepository must not be null");
+        Assert.notNull(taskDefinitionRepository, "TaskDefinitionRepository must not be null");
+        Assert.notNull(standaloneDefinitionRepository, "StandaloneDefinitionRepository must not be null");
         Assert.notNull(deploymentIdRepository, "DeploymentIdRepository must not be null");
-        Assert.notNull(registry, "AppRegistry must not be null");
-        Assert.notNull(deployer, "AppDeployer must not be null");
-        Assert.notNull(metadataResolver, "MetadataResolver must not be null");
-        Assert.notNull(commonProperties, "CommonApplicationProperties must not be null");
+        Assert.notNull(streamDeploymentController, "StreamDeploymentController must not be null");
+        Assert.notNull(taskDeploymentController, "TaskDeploymentController must not be null");
+        Assert.notNull(standaloneDeploymentController, "StandaloneDeploymentController must not be null");
         this.repository = repository;
         this.streamDefinitionRepository = streamDefinitionRepository;
         this.taskDefinitionRepository = taskDefinitionRepository;
         this.standaloneDefinitionRepository = standaloneDefinitionRepository;
         this.deploymentIdRepository = deploymentIdRepository;
-        this.registry = registry;
-        this.deployer = deployer;
-        this.metadataResolver = metadataResolver;
-        this.commonApplicationProperties = commonProperties;
         this.streamDeploymentController = streamDeploymentController;
         this.taskDeploymentController = taskDeploymentController;
         this.standaloneDeploymentController = standaloneDeploymentController;
@@ -162,16 +142,16 @@ public class ApplicationGroupDeploymentController {
 		undeployApplicationGroup(applicationGroup);
 	}
 
-//	/**
-//	 * Request un-deployment of all streams.
-//	 */
-//	@RequestMapping(value = "", method = RequestMethod.DELETE)
-//	@ResponseStatus(HttpStatus.OK)
-//	public void undeployAll() {
-//		for (StreamDefinition stream : this.repository.findAll()) {
-//			this.undeployStream(stream);
-//		}
-//	}
+	/**
+	 * Request un-deployment of all application groups.
+	 */
+	@RequestMapping(value = "", method = RequestMethod.DELETE)
+	@ResponseStatus(HttpStatus.OK)
+	public void undeployAll() {
+		for (ApplicationGroupDefinition applicationGroup : this.repository.findAll()) {
+			this.undeployApplicationGroup(applicationGroup);
+		}
+	}
 
 	/**
 	 * Request deployment of an existing application group definition.
@@ -272,7 +252,6 @@ public class ApplicationGroupDeploymentController {
 	 */
 	private void undeployApplicationGroup(ApplicationGroupDefinition applicationGroup) {
 		String id = this.deploymentIdRepository.findOne(applicationGroup.getName());
-		// if id is null, assume nothing is deployed
 		if (id != null) {
 			for (ApplicationGroupAppDefinition appDefinition : applicationGroup.getAppDefinitions()) {
 				switch (appDefinition.getDefinitionType()) {
