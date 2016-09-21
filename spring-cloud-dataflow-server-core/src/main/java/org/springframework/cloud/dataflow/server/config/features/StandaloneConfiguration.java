@@ -28,7 +28,7 @@ import org.springframework.context.annotation.Configuration;
  * @author Donovan Muller
  */
 @Configuration
-@ConditionalOnProperty(prefix = FeaturesProperties.FEATURES_PREFIX, name = FeaturesProperties.STANDALONE_ENABLED, matchIfMissing = true)
+@ConditionalOnProperty(prefix = FeaturesProperties.FEATURES_PREFIX, name = FeaturesProperties.STANDALONE_ENABLED)
 public class StandaloneConfiguration {
 
 	@Bean
