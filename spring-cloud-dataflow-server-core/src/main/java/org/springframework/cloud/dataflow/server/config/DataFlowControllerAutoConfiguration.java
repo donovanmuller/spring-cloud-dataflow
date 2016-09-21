@@ -27,7 +27,6 @@ import org.springframework.analytics.rest.controller.AggregateCounterController;
 import org.springframework.analytics.rest.controller.CounterController;
 import org.springframework.analytics.rest.controller.FieldValueCounterController;
 import org.springframework.batch.admin.service.JobService;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.actuate.metrics.repository.MetricRepository;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -127,15 +126,12 @@ public class DataFlowControllerAutoConfiguration {
 			StreamDefinitionRepository streamDefinitionRepository,
 			TaskDefinitionRepository taskDefinitionRepository,
 			StandaloneDefinitionRepository standaloneDefinitionRepository,
-			DeploymentIdRepository deploymentIdRepository,
 			ApplicationGroupDeploymentController deploymentController,
-			AppDeployer deployer, AppRegistry appRegistry,
 			DelegatingResourceLoader resourceLoader,
 			ApplicationGroupRegistryService applicationGroupRegistryService) {
 		return new ApplicationGroupDefinitionController(repository,
-				deploymentIdRepository, streamDefinitionRepository,
-				taskDefinitionRepository, standaloneDefinitionRepository,
-				deploymentController, deployer, appRegistry, resourceLoader,
+				streamDefinitionRepository, taskDefinitionRepository,
+				standaloneDefinitionRepository, deploymentController, resourceLoader,
 				applicationGroupRegistryService);
 	}
 

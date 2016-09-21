@@ -59,6 +59,6 @@ public class RdbmsStandaloneDefinitionRepository extends AbstractRdbmsKeyValueRe
 	@Override
 	public void delete(StandaloneDefinition definition) {
 		Assert.notNull(definition, "definition must not null");
-		delete(definition.getName());
+		delete(definition.getRegisteredAppName());
 	}
 }
