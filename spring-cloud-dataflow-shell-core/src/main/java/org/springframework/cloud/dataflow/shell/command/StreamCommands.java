@@ -59,7 +59,11 @@ public class StreamCommands implements CommandMarker {
 
 	private static final String CREATE_STREAM = "stream create";
 
+	private static final String UPDATE_STREAM = "stream update";
+
 	private static final String DEPLOY_STREAM = "stream deploy";
+
+	private static final String REDEPLOY_STREAM = "stream redeploy";
 
 	private static final String UNDEPLOY_STREAM = "stream undeploy";
 
@@ -79,8 +83,8 @@ public class StreamCommands implements CommandMarker {
 	@Autowired
 	private UserInput userInput;
 
-	@CliAvailabilityIndicator({ LIST_STREAM, CREATE_STREAM, DEPLOY_STREAM, UNDEPLOY_STREAM, UNDEPLOY_STREAM_ALL,
-		DESTROY_STREAM, DESTROY_STREAM_ALL })
+	@CliAvailabilityIndicator({ LIST_STREAM, CREATE_STREAM, UPDATE_STREAM, DEPLOY_STREAM, REDEPLOY_STREAM,
+			UNDEPLOY_STREAM, UNDEPLOY_STREAM_ALL, DESTROY_STREAM, DESTROY_STREAM_ALL })
 	public boolean available() {
 		DataFlowOperations dataFlowOperations = dataFlowShell.getDataFlowOperations();
 		return dataFlowOperations != null && dataFlowOperations.streamOperations() != null;
@@ -109,6 +113,16 @@ public class StreamCommands implements CommandMarker {
 			message += "\nDeployment request has been sent";
 		}
 		return message;
+	}
+
+	@CliCommand(value = UPDATE_STREAM, help = "Update an existing stream definition")
+	public String updateStream(
+			@CliOption(mandatory = true, key = { "", "name" }, help = "the name to give to the stream") String name,
+			@CliOption(mandatory = true, key = { "definition" }, help = "a stream definition, using the DSL (e.g. \"myApp --port=9000 \")", optionContext = "disable-string-converter completion-stream") String dsl,
+			@CliOption(key = "redeploy", help = "whether to redeploy the stream immediately", unspecifiedDefaultValue = "false", specifiedDefaultValue = "true") boolean redeploy) {
+		streamOperations().updateStream(name, dsl, redeploy);
+		return (redeploy) ? String.format("Updated and redeployed stream '%s'", name) : String.format(
+				"Updated stream definition '%s'", name);
 	}
 
 	@CliCommand(value = DEPLOY_STREAM, help = "Deploy a previously created stream")
@@ -148,6 +162,35 @@ public class StreamCommands implements CommandMarker {
 		}
 		streamOperations().deploy(name, propertiesToUse);
 		return String.format("Deployment request has been sent for stream '%s'", name);
+	}
+
+	@CliCommand(value = REDEPLOY_STREAM, help = "Redeploy a currently deployed stream")
+	public String redeployStream(
+			@CliOption(key = { "", "name" }, help = "the name of the stream to redeploy", mandatory = true/*, optionContext = "existing-stream undeployed disable-string-converter"*/) String name,
+			@CliOption(key = { PROPERTIES_OPTION }, help = "the properties for this deployment", mandatory = false) String properties,
+			@CliOption(key = { PROPERTIES_FILE_OPTION }, help = "the properties for this deployment (as a File)", mandatory = false) File propertiesFile
+	) throws IOException {
+		int which = Assertions.atMostOneOf(PROPERTIES_OPTION, properties, PROPERTIES_FILE_OPTION, propertiesFile);
+		Map<String, String> propertiesToUse;
+		switch (which) {
+			case 0:
+				propertiesToUse = DeploymentPropertiesUtils.parse(properties);
+				break;
+			case 1:
+				Properties props = new Properties();
+				try (FileInputStream fis = new FileInputStream(propertiesFile)) {
+					props.load(fis);
+				}
+				propertiesToUse = DeploymentPropertiesUtils.convert(props);
+				break;
+			case -1: // Neither option specified
+				propertiesToUse = Collections.<String, String> emptyMap();
+				break;
+			default:
+				throw new AssertionError();
+		}
+		streamOperations().redeploy(name, propertiesToUse);
+		return String.format("Deployed stream '%s'", name);
 	}
 
 	@CliCommand(value = UNDEPLOY_STREAM, help = "Un-deploy a previously deployed stream")

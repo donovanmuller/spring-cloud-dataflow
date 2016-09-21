@@ -122,4 +122,9 @@ public class InMemoryStreamDefinitionRepository implements StreamDefinitionRepos
 		definitions.clear();
 	}
 
+	@Override
+	public StreamDefinition update(final StreamDefinition definition) {
+		definitions.put(definition.getName(), definition);
+		return definition;
+	}
 }

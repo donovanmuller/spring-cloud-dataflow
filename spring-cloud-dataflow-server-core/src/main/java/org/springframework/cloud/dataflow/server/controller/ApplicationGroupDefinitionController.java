@@ -25,10 +25,8 @@ import org.springframework.cloud.dataflow.core.ApplicationGroupAppDefinition;
 import org.springframework.cloud.dataflow.core.ApplicationGroupDefinition;
 import org.springframework.cloud.dataflow.core.StandaloneDefinition;
 import org.springframework.cloud.dataflow.core.StreamDefinition;
-import org.springframework.cloud.dataflow.registry.AppRegistry;
 import org.springframework.cloud.dataflow.rest.resource.ApplicationGroupDefinitionResource;
 import org.springframework.cloud.dataflow.server.repository.ApplicationGroupDefinitionRepository;
-import org.springframework.cloud.dataflow.server.repository.DeploymentIdRepository;
 import org.springframework.cloud.dataflow.server.repository.NoSuchApplicationGroupDefinitionException;
 import org.springframework.cloud.dataflow.server.repository.StandaloneDefinitionRepository;
 import org.springframework.cloud.dataflow.server.repository.StreamDefinitionRepository;
@@ -36,7 +34,6 @@ import org.springframework.cloud.dataflow.server.repository.TaskDefinitionReposi
 import org.springframework.cloud.dataflow.server.service.impl.ApplicationGroupDescriptor;
 import org.springframework.cloud.dataflow.server.service.impl.ApplicationGroupRegistryService;
 import org.springframework.cloud.deployer.resource.maven.MavenResource;
-import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -163,57 +160,103 @@ public class ApplicationGroupDefinitionController {
 					 @RequestParam(value = "force", defaultValue = "false") boolean force,
 					 @RequestParam(value = "deploy", defaultValue = "false") boolean deploy,
 					 @RequestParam(required = false) String properties) {
-        List<String> errorMessages = new ArrayList<>();
-        if (StringUtils.hasText(uri)) {
-            Resource resource = this.resourceLoader.getResource(uri);
-            if (!(resource instanceof MavenResource)) {
-                throw new IllegalArgumentException(String.format("uri '%s' does not reference a valid Maven resource. " +
-                        "Only application group definitions from maven resources supported.",
-                        uri));
-            }
-            try {
-                ApplicationGroupDescriptor descriptor = applicationGroupRegistryService
-                        .extractAndParseDescriptor((MavenResource) resource);
-                applicationGroupRegistryService.registerAndCreateApps(name, descriptor, force);
-                dsl = descriptor.toDsl();
-            } catch (Exception e) {
-                throw new IllegalArgumentException(String.format("Application group URI '%s' could not be extracted and parsed '%s'",
-                        uri, e));
-            }
-        }
-        ApplicationGroupDefinition applicationGroup = new ApplicationGroupDefinition(name, dsl);
-        for (ApplicationGroupAppDefinition appDefinition : applicationGroup.getAppDefinitions()) {
-            switch (appDefinition.getDefinitionType()) {
-            case stream: {
-                if (streamDefinitionRepository.findOne(appDefinition.getDefinitionName()) == null) {
-                    errorMessages.add(String.format("Stream definition '%s' does not exist.",
-                            appDefinition.getDefinitionName()));
-                }
-            }
-                break;
-            case task: {
-                if (taskDefinitionRepository.findOne(appDefinition.getDefinitionName()) == null) {
-                    errorMessages.add(String.format("Task definition '%s' does not exist.",
-                            appDefinition.getDefinitionName()));
-                }
-            }
-                break;
-            case standalone: {
-                if (standaloneDefinitionRepository.findOne(appDefinition.getDefinitionName()) == null) {
-                    errorMessages.add(String.format("Standalone definition '%s' does not exist.",
-                            appDefinition.getDefinitionName()));
-                }
-            }
-                break;
-            }
-        }
-        if (!errorMessages.isEmpty()) {
-            throw new IllegalArgumentException(StringUtils.collectionToDelimitedString(errorMessages, System.lineSeparator()));
-        }
-        this.repository.save(applicationGroup);
-        if (deploy) {
-            deploymentController.deployApplicationGroup(name, properties);
-        }
+		if (repository.exists(name) && force) {
+			update(name, uri, dsl, deploy, properties);
+		} else {
+			List<String> errorMessages = new ArrayList<>();
+			if (StringUtils.hasText(uri)) {
+				Resource resource = this.resourceLoader.getResource(uri);
+				if (!(resource instanceof MavenResource)) {
+					throw new IllegalArgumentException(String.format("uri '%s' does not reference a valid Maven resource. " +
+									"Only application group definitions from maven resources supported.",
+							uri));
+				}
+				try {
+					ApplicationGroupDescriptor descriptor = applicationGroupRegistryService
+							.extractAndParseDescriptor((MavenResource) resource);
+					applicationGroupRegistryService.registerAndCreateApps(name, descriptor, force);
+					dsl = descriptor.toDsl();
+				} catch (Exception e) {
+					throw new IllegalArgumentException(String.format("Application group URI '%s' could not be extracted and parsed '%s'",
+							uri, e));
+				}
+			}
+			ApplicationGroupDefinition applicationGroup = new ApplicationGroupDefinition(name, dsl);
+			for (ApplicationGroupAppDefinition appDefinition : applicationGroup.getAppDefinitions()) {
+				switch (appDefinition.getDefinitionType()) {
+					case stream: {
+						if (streamDefinitionRepository.findOne(appDefinition.getDefinitionName()) == null) {
+							errorMessages.add(String.format("Stream definition '%s' does not exist.",
+									appDefinition.getDefinitionName()));
+						}
+					}
+					break;
+					case task: {
+						if (taskDefinitionRepository.findOne(appDefinition.getDefinitionName()) == null) {
+							errorMessages.add(String.format("Task definition '%s' does not exist.",
+									appDefinition.getDefinitionName()));
+						}
+					}
+					break;
+					case standalone: {
+						if (standaloneDefinitionRepository.findOne(appDefinition.getDefinitionName()) == null) {
+							errorMessages.add(String.format("Standalone definition '%s' does not exist.",
+									appDefinition.getDefinitionName()));
+						}
+					}
+					break;
+				}
+			}
+			if (!errorMessages.isEmpty()) {
+				throw new IllegalArgumentException(StringUtils.collectionToDelimitedString(errorMessages, System.lineSeparator()));
+			}
+			this.repository.save(applicationGroup);
+			if (deploy) {
+				deploymentController.deploy(name, properties);
+			}
+		}
+	}
+
+	/**
+	 * Update an existing application group.
+	 *
+	 * @param name   	existing application group name
+	 * @param dsl    	new DSL definition for application group
+	 * @param redeploy 	if {@code true}, the application group is deployed/undeployed, then redeploy it
+	 */
+	@RequestMapping(value = "/{name}", method = RequestMethod.PUT)
+	@ResponseStatus(HttpStatus.OK)
+	public void update(@PathVariable("name") String name,
+			@RequestParam(value = "uri", required = false) String uri,
+			@RequestParam("definition") String dsl,
+			@RequestParam(value = "redeploy", defaultValue = "false") boolean redeploy,
+			@RequestParam(required = false) String properties) {
+		if (!repository.exists(name)) {
+			throw new NoSuchApplicationGroupDefinitionException(name,
+					String.format("An existing application group '%s' is not defined.", name));
+		}
+		if (StringUtils.hasText(uri)) {
+			Resource resource = this.resourceLoader.getResource(uri);
+			if (!(resource instanceof MavenResource)) {
+				throw new IllegalArgumentException(String.format("uri '%s' does not reference a valid Maven resource. " +
+								"Only application group definitions from maven resources supported.",
+						uri));
+			}
+			try {
+				ApplicationGroupDescriptor descriptor = applicationGroupRegistryService
+						.extractAndParseDescriptor((MavenResource) resource);
+				applicationGroupRegistryService.registerAndUpdateApps(name, descriptor);
+				dsl = descriptor.toDsl();
+			} catch (Exception e) {
+				throw new IllegalArgumentException(String.format("Application group URI '%s' could not be extracted and parsed '%s'",
+						uri, e));
+			}
+		}
+		ApplicationGroupDefinition applicationGroup = new ApplicationGroupDefinition(name, dsl);
+		this.repository.update(applicationGroup);
+		if (redeploy) {
+			deploymentController.redeploy(name, properties);
+		}
 	}
 
 	/**

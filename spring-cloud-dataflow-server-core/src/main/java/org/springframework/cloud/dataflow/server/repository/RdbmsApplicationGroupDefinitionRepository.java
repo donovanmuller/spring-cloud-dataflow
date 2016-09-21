@@ -65,6 +65,14 @@ public class RdbmsApplicationGroupDefinitionRepository
 	}
 
 	@Override
+	public ApplicationGroupDefinition update(final ApplicationGroupDefinition definition) {
+		Assert.notNull(definition, "definition must not be null");
+		Object[] updateParameters = new Object[]{definition.getDslText(), definition.getName()};
+		jdbcTemplate.update(updateRow, updateParameters, new int[]{Types.VARCHAR, Types.CLOB});
+		return definition;
+	}
+
+	@Override
 	public void delete(ApplicationGroupDefinition definition) {
 		Assert.notNull(definition, "definition must not null");
 		delete(definition.getName());

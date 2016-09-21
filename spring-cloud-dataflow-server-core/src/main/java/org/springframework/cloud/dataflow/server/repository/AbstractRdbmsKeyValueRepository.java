@@ -70,6 +70,8 @@ public abstract class AbstractRdbmsKeyValueRepository<D> implements PagingAndSor
 
 	protected String saveRow;
 
+	protected String updateRow;
+
 	private String countAll;
 
 	private String countByKey;
@@ -115,6 +117,7 @@ public abstract class AbstractRdbmsKeyValueRepository<D> implements PagingAndSor
 		findAllQuery = "SELECT " + selectClause + "FROM " + tableName;
 		findAllWhereClauseByKey = findAllQuery + whereClauseByKey;
 		saveRow = "INSERT into " + tableName + "(" + keyColumn + ", " + valueColumn + ")" + "values (?, ?)";
+		updateRow = "UPDATE " + tableName + "SET " + valueColumn + " = ? " + whereClauseByKey;
 		countAll = "SELECT COUNT(*) FROM " + tableName;
 		countByKey = "SELECT COUNT(*) FROM " + tableName + whereClauseByKey;
 		findAllWhereInClause = findAllQuery + inClauseByKey;

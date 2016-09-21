@@ -22,10 +22,12 @@ import org.springframework.cloud.dataflow.rest.resource.StandaloneDefinitionReso
 import org.springframework.cloud.dataflow.rest.util.DeploymentPropertiesUtils;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.ResourceSupport;
+import org.springframework.http.HttpMethod;
 import org.springframework.util.Assert;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 /**
  * Implementation for {@link StandaloneOperations}.
@@ -84,16 +86,37 @@ public class StandaloneTemplate implements StandaloneOperations {
 	}
 
 	@Override
+	public StandaloneDefinitionResource updateStandalone(final String name, final String definition, boolean redeploy) {
+		StandaloneDefinitionResource standaloneDefinition = restTemplate.exchange(
+				UriComponentsBuilder.fromHttpUrl(definitionLink.expand(name).getHref())
+						.queryParam("definition", definition)
+						.queryParam("redeploy", Boolean.toString(redeploy))
+						.build(false).toUri(),
+				HttpMethod.PUT,
+				null,
+				StandaloneDefinitionResource.class).getBody();
+		return standaloneDefinition;
+	}
+
+	@Override
 	public StandaloneDefinitionResource display(final String name) {
 		return restTemplate.getForObject(definitionLink.expand(name).getHref(),
 				StandaloneDefinitionResource.class);
 	}
 
 	@Override
-	public void deploy(String name, Map<String, String> properties) {
+	public void deploy(String name, Map<String, String> properties, boolean force) {
 		MultiValueMap<String, Object> values = new LinkedMultiValueMap<>();
 		values.add("properties", DeploymentPropertiesUtils.format(properties));
+		values.add("force", Boolean.toString(force));
 		restTemplate.postForObject(deploymentLink.expand(name).getHref(), values, Object.class);
+	}
+
+	@Override
+	public void redeploy(final String name, final Map<String, String> properties) {
+		MultiValueMap<String, Object> values = new LinkedMultiValueMap<>();
+		values.add("properties", DeploymentPropertiesUtils.format(properties));
+		restTemplate.put(deploymentLink.expand(name).getHref(), values, Object.class);
 	}
 
 	@Override

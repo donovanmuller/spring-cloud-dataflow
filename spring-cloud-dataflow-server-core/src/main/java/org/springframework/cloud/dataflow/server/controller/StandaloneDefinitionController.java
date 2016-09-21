@@ -29,6 +29,7 @@ import org.springframework.cloud.dataflow.registry.AppRegistry;
 import org.springframework.cloud.dataflow.rest.resource.StandaloneDefinitionResource;
 import org.springframework.cloud.dataflow.server.repository.DeploymentIdRepository;
 import org.springframework.cloud.dataflow.server.repository.DeploymentKey;
+import org.springframework.cloud.dataflow.server.repository.DuplicateStandaloneDefinitionException;
 import org.springframework.cloud.dataflow.server.repository.NoSuchStandaloneDefinitionException;
 import org.springframework.cloud.dataflow.server.repository.StandaloneDefinitionRepository;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
@@ -159,9 +160,50 @@ public class StandaloneDefinitionController {
 		if (!errorMessages.isEmpty()) {
 			throw new IllegalArgumentException(StringUtils.collectionToDelimitedString(errorMessages, System.lineSeparator()));
 		}
-		this.repository.save(standalone);
-		if (deploy) {
-			deploymentController.deploy(name, null);
+		try {
+			this.repository.save(standalone);
+			if (deploy) {
+				// force will always be false for deploymentController.deploy()
+				// I.e. can't be deployed if this is the first definition
+				deploymentController.deploy(name, null, false);
+			}
+		} catch (DuplicateStandaloneDefinitionException e) {
+			if (force) {
+				update(name, dsl, deploy);
+			}
+		}
+	}
+
+	/**
+	 * Update an existing standalone application.
+	 *
+	 * @param name   	existing standalone application name
+	 * @param dsl    	new DSL definition for standalone application
+	 * @param redeploy 	if {@code true}, the standalone application is deployed/undeployed, then redeploy it
+	 */
+	@RequestMapping(value = "/{name}", method = RequestMethod.PUT)
+	@ResponseStatus(HttpStatus.OK)
+	public void update(@PathVariable("name") String name,
+					   @RequestParam("definition") String dsl,
+					   @RequestParam(value = "redeploy", defaultValue = "false")
+							   boolean redeploy) {
+		if (!repository.exists(name)) {
+			throw new NoSuchStandaloneDefinitionException(name,
+					String.format("An existing standalone application '%s' is not defined.", name));
+		}
+		StandaloneDefinition standalone = new StandaloneDefinition(name, dsl);
+		List<String> errorMessages = new ArrayList<>();
+		ApplicationType appType = ApplicationType.standalone;
+		if (appRegistry.find(standalone.getName(), appType) == null) {
+			errorMessages.add(String.format("Application name '%s' with type '%s' does not exist in the app registry.",
+					name, appType));
+		}
+		if (!errorMessages.isEmpty()) {
+			throw new IllegalArgumentException(StringUtils.collectionToDelimitedString(errorMessages, System.lineSeparator()));
+		}
+		this.repository.update(standalone);
+		if (redeploy) {
+			deploymentController.redeploy(name, null);
 		}
 	}
 

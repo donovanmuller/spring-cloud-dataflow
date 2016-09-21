@@ -43,6 +43,7 @@ import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import org.springframework.cloud.deployer.spi.core.AppRedeploymentRequest;
 import org.springframework.core.io.Resource;
 import org.springframework.hateoas.ExposesResourceFor;
 import org.springframework.http.HttpStatus;
@@ -158,25 +159,49 @@ public class StandaloneDeploymentController {
 	/**
 	 * Request deployment of an existing standalone application definition.
 	 * @param name       the name of an existing standalone application definition (required)
-	 * @param properties the deployment properties for the standalone application as a comma-delimited list of
-	 *                      key=value pairs
+	 * @param properties the deployment properties for the standalone application as a comma-delimited list of key=value pairs
+	 * @param force		 if a standalone application is already deployed, then redeploy it if true
 	 */
 	@RequestMapping(value = "/{name}", method = RequestMethod.POST)
 	@ResponseStatus(HttpStatus.CREATED)
 	public void deploy(@PathVariable("name") String name,
-					   @RequestParam(required = false) String properties) {
+					   @RequestParam(required = false) String properties,
+					   @RequestParam(value = "force", defaultValue = "false") boolean force) {
 		StandaloneDefinition standalone = this.repository.findOne(name);
 		if (standalone == null) {
 			throw new NoSuchStandaloneDefinitionException(name);
 		}
 		String status = calculateStandaloneState(name);
 		if (DeploymentState.deployed.equals(DeploymentState.valueOf(status))) {
-			throw new StandaloneAlreadyDeployedException(name);
+			if (force) {
+				redeploy(name, properties);
+			} else {
+				throw new StandaloneAlreadyDeployedException(name);
+			}
 		}
 		else if (DeploymentState.deploying.equals(DeploymentState.valueOf(status))) {
 			throw new StandaloneAlreadyDeployingException(name);
 		}
 		deployStandalone(standalone, DeploymentPropertiesUtils.parse(properties));
+	}
+
+	@RequestMapping(value = "/{name}", method = RequestMethod.PUT)
+	@ResponseStatus(HttpStatus.OK)
+	public void redeploy(@PathVariable("name") String name,
+			@RequestParam(required = false) String properties) {
+		StandaloneDefinition standalone = this.repository.findOne(name);
+		if (standalone == null) {
+			throw new NoSuchStandaloneDefinitionException(name);
+		}
+		String status = calculateStandaloneState(name);
+		if (DeploymentState.undeployed.equals(DeploymentState.valueOf(status))) {
+			throw new StandaloneNotDeployedException(name);
+		}
+		else if (DeploymentState.deploying.equals(DeploymentState.valueOf(status))) {
+			throw new StandaloneAlreadyDeployingException(name);
+		}
+
+		redeployStandalone(standalone, DeploymentPropertiesUtils.parse(properties));
 	}
 
 	String calculateStandaloneState(String name) {
@@ -216,6 +241,32 @@ public class StandaloneDeploymentController {
 		}
 		catch (Exception e) {
 			logger.warn(String.format("Exception when deploying the app %s: %s", standalone, e.getMessage()));
+		}
+	}
+
+	/**
+	 * Deploy a standalone application as defined by its {@link StandaloneDefinition} and optional deployment properties.
+	 * @param standalone                 the standalone application to deploy
+	 * @param streamDeploymentProperties the deployment properties for the standalone application
+	 */
+	void redeployStandalone(StandaloneDefinition standalone, Map<String, String> streamDeploymentProperties) {
+		AppRegistration registration = this.registry.find(standalone.getName(), ApplicationType.standalone);
+		Assert.notNull(registration, String.format("no application '%s' of type '%s' exists in the registry",
+				standalone.getName(), ApplicationType.standalone));
+		Resource resource = registration.getResource();
+		standalone = qualifyParameters(standalone, resource);
+
+		AppRedeploymentRequest request = standalone.createRedeploymentRequest(resource, extractDeploymentProperties(
+				standalone, streamDeploymentProperties
+		));
+		try {
+			this.deploymentIdRepository.delete(DeploymentKey.forStandaloneAppDefinition(standalone));
+
+			String id = this.deployer.redeploy(request);
+			this.deploymentIdRepository.save(DeploymentKey.forStandaloneAppDefinition(standalone), id);
+		}
+		catch (Exception e) {
+			logger.warn(String.format("Exception when redeploying the app %s: %s", standalone, e.getMessage()));
 		}
 	}
 

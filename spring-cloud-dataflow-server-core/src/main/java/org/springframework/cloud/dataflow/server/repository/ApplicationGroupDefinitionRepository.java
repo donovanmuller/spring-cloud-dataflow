@@ -23,4 +23,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ApplicationGroupDefinitionRepository extends PagingAndSortingRepository<ApplicationGroupDefinition, String> {
 
+    ApplicationGroupDefinition update(ApplicationGroupDefinition definition);
 }

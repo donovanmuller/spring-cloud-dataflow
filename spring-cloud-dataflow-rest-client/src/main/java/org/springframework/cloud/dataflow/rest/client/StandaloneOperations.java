@@ -39,6 +39,11 @@ public interface StandaloneOperations {
 	public StandaloneDefinitionResource createStandalone(String name, String definition, boolean force, boolean deploy);
 
 	/**
+	 * Update an existing standalone application, optionally redeploying it.
+	 */
+	public StandaloneDefinitionResource updateStandalone(String name, String definition, boolean deploy);
+
+	/**
 	 * Return the {@link StandaloneDefinitionResource} for the standalone application name specified.
 	 *
 	 * @param name name of the standalone definition
@@ -49,7 +54,12 @@ public interface StandaloneOperations {
 	/**
 	 * Deploy an already registered standalone application.
 	 */
-	public void deploy(String name, Map<String, String> properties);
+	public void deploy(String name, Map<String, String> properties, boolean force);
+
+	/**
+	 * Redeploy an already deployed standalone application.
+	 */
+	public void redeploy(String name, Map<String, String> properties);
 
 	/**
 	 * Undeploy a deployed standalone application.

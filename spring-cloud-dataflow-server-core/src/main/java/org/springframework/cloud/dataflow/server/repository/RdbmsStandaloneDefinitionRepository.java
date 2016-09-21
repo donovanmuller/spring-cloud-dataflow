@@ -57,6 +57,14 @@ public class RdbmsStandaloneDefinitionRepository extends AbstractRdbmsKeyValueRe
 	}
 
 	@Override
+	public StandaloneDefinition update(StandaloneDefinition definition) {
+		Assert.notNull(definition, "definition must not be null");
+		Object[] updateParameters = new Object[]{definition.getDslText(), definition.getRegisteredAppName()};
+		jdbcTemplate.update(updateRow, updateParameters, new int[]{Types.VARCHAR, Types.CLOB});
+		return definition;
+	}
+
+	@Override
 	public void delete(StandaloneDefinition definition) {
 		Assert.notNull(definition, "definition must not null");
 		delete(definition.getRegisteredAppName());

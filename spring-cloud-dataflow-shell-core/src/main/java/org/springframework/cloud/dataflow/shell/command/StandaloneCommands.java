@@ -111,7 +111,8 @@ public class StandaloneCommands implements CommandMarker {
 	public String deployStandalone(
 			@CliOption(key = { "", "name" }, help = "the name of the standalone application", mandatory = true) String name,
 			@CliOption(key = { PROPERTIES_OPTION }, help = "the properties for this deployment", mandatory = false) String properties,
-			@CliOption(key = { PROPERTIES_FILE_OPTION }, help = "the properties for this deployment (as a File)", mandatory = false) File propertiesFile) throws IOException {
+			@CliOption(key = { PROPERTIES_FILE_OPTION }, help = "the properties for this deployment (as a File)", mandatory = false) File propertiesFile,
+			@CliOption(key = "force", help = "force redeploy if standalone application is already deployed", specifiedDefaultValue = "true", unspecifiedDefaultValue = "false") boolean force) throws IOException {
 		int which = Assertions.atMostOneOf(PROPERTIES_OPTION, properties, PROPERTIES_FILE_OPTION, propertiesFile);
 		Map<String, String> propertiesToUse;
 		switch (which) {
@@ -131,7 +132,7 @@ public class StandaloneCommands implements CommandMarker {
 			default:
 				throw new AssertionError();
 		}
-		standaloneOperations().deploy(name, propertiesToUse);
+		standaloneOperations().deploy(name, propertiesToUse, force);
 		return String.format("Deployed standalone application '%s'", name);
 	}
 

@@ -89,6 +89,24 @@ public class ApplicationGroupRegistryService {
 		// TODO tasks
 	}
 
+	public void registerAndUpdateApps(String name, ApplicationGroupDescriptor descriptor) throws Exception {
+		for (ApplicationGroupDescriptor.Application app : descriptor.getApps()) {
+			logger.info("Updating application '{}:{}' in application group '{}'", app.getType(),
+					app.getName(), name);
+			appRegistryController.register(app.getType(), app.getName(), app.getUri(), true);
+		}
+
+		for (ApplicationGroupDescriptor.Standalone standalone : descriptor.getStandalone()) {
+			standaloneDefinitionController.update(standalone.getName(), standalone.getDsl(), false);
+		}
+
+		for (ApplicationGroupDescriptor.Stream stream : descriptor.getStream()) {
+			streamDefinitionController.update(stream.getName(), stream.getDsl(), false);
+		}
+
+		// TODO tasks
+	}
+
 	class MavenResourceJarExtractor {
 
 		/**

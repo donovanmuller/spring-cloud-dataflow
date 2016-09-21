@@ -27,7 +27,6 @@ import org.springframework.cloud.dataflow.core.ApplicationGroupAppDefinition;
 import org.springframework.cloud.dataflow.core.ApplicationGroupDefinition;
 import org.springframework.cloud.dataflow.core.StandaloneDefinition;
 import org.springframework.cloud.dataflow.core.StreamDefinition;
-import org.springframework.cloud.dataflow.registry.AppRegistry;
 import org.springframework.cloud.dataflow.rest.resource.ApplicationGroupDeploymentResource;
 import org.springframework.cloud.dataflow.rest.util.DeploymentPropertiesUtils;
 import org.springframework.cloud.dataflow.server.repository.ApplicationGroupDefinitionRepository;
@@ -36,7 +35,6 @@ import org.springframework.cloud.dataflow.server.repository.NoSuchApplicationGro
 import org.springframework.cloud.dataflow.server.repository.StandaloneDefinitionRepository;
 import org.springframework.cloud.dataflow.server.repository.StreamDefinitionRepository;
 import org.springframework.cloud.dataflow.server.repository.TaskDefinitionRepository;
-import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.hateoas.ExposesResourceFor;
 import org.springframework.http.HttpStatus;
@@ -160,8 +158,8 @@ public class ApplicationGroupDeploymentController {
 	 */
 	@RequestMapping(value = "/{name}", method = RequestMethod.POST)
 	@ResponseStatus(HttpStatus.CREATED)
-	public void deployApplicationGroup(@PathVariable("name") String name,
-									   @RequestParam(required = false) String properties) {
+	public void deploy(@PathVariable("name") String name,
+			@RequestParam(required = false) String properties) {
 		ApplicationGroupDefinition applicationGroup = this.repository.findOne(name);
 		if (applicationGroup == null) {
 			throw new NoSuchApplicationGroupDefinitionException(name);
@@ -173,7 +171,54 @@ public class ApplicationGroupDeploymentController {
 		else if (DeploymentState.deploying.equals(DeploymentState.valueOf(status))) {
 			throw new ApplicationGroupAlreadyDeployedException(name);
 		}
-		deployApplicationGroup(applicationGroup, DeploymentPropertiesUtils.parse(properties));
+		deploy(applicationGroup, DeploymentPropertiesUtils.parse(properties));
+	}
+
+
+	@RequestMapping(value = "/{name}", method = RequestMethod.PUT)
+	@ResponseStatus(HttpStatus.OK)
+	public void redeploy(@PathVariable("name") String name,
+			@RequestParam(required = false) String properties) {
+		ApplicationGroupDefinition applicationGroup = this.repository.findOne(name);
+		if (applicationGroup == null) {
+			throw new NoSuchApplicationGroupDefinitionException(name);
+		}
+		String status = calculateApplicationGroupState(name);
+		if (DeploymentState.undeployed.equals(DeploymentState.valueOf(status))) {
+			throw new ApplicationGroupNotDeployedException(name);
+		}
+		else if (DeploymentState.deploying.equals(DeploymentState.valueOf(status))) {
+			throw new ApplicationGroupAlreadyDeployingException(name);
+		}
+
+		redeployApplicationGroup(applicationGroup, DeploymentPropertiesUtils.parse(properties));
+	}
+
+	/**
+	 * Redeploy an application group as defined by its {@link ApplicationGroupDefinition} and optional deployment properties.
+	 * @param applicationGroup the application group definition to redeploy
+	 * @param deploymentProperties the deployment properties for the applications in this application group
+	 */
+	private void redeployApplicationGroup(ApplicationGroupDefinition applicationGroup, Map<String, String> deploymentProperties) {
+		this.deploymentIdRepository.delete(applicationGroup.getName());
+
+		for (ApplicationGroupAppDefinition appDefinition : applicationGroup.getAppDefinitions()) {
+			switch (appDefinition.getDefinitionType()) {
+				case stream: {
+					StreamDefinition streamDefinition = streamDefinitionRepository.findOne(appDefinition.getDefinitionName());
+					streamDeploymentController.redeployStream(streamDefinition, deploymentProperties);
+				} break;
+				case task: {
+					// TODO does it make sense to "deploy" a task? Probably not.
+				} break;
+				case standalone: {
+					StandaloneDefinition standaloneDefinition = standaloneDefinitionRepository.findOne(appDefinition.getDefinitionName());
+					standaloneDeploymentController.redeployStandalone(standaloneDefinition, deploymentProperties);
+				} break;
+			}
+		}
+
+		this.deploymentIdRepository.save(applicationGroup.getName(), UUID.randomUUID().toString());
 	}
 
 	String calculateApplicationGroupState(String name) {
@@ -226,7 +271,7 @@ public class ApplicationGroupDeploymentController {
 	 * @param applicationGroup the application group definition to deploy
 	 * @param deploymentProperties the deployment properties for the applications in this application group
 	 */
-	private void deployApplicationGroup(ApplicationGroupDefinition applicationGroup, Map<String, String> deploymentProperties) {
+	private void deploy(ApplicationGroupDefinition applicationGroup, Map<String, String> deploymentProperties) {
 		for (ApplicationGroupAppDefinition appDefinition : applicationGroup.getAppDefinitions()) {
 			switch (appDefinition.getDefinitionType()) {
 				case stream: {

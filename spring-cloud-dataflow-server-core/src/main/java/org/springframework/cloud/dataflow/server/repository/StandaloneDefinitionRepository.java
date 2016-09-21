@@ -26,4 +26,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface StandaloneDefinitionRepository extends PagingAndSortingRepository<StandaloneDefinition, String> {
 
+    StandaloneDefinition update(StandaloneDefinition definition);
 }

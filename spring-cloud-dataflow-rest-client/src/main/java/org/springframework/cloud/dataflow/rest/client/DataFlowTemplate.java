@@ -71,6 +71,11 @@ public class DataFlowTemplate implements DataFlowOperations {
 	protected final Map<String, UriTemplate> resources = new HashMap<String, UriTemplate>();
 
 	/**
+	 * REST client for application group operations.
+	 */
+	private final ApplicationGroupTemplate applicationGroupOperations;
+
+	/**
 	 * REST client for stream operations.
 	 */
 	private final StandaloneOperations standaloneOperations;

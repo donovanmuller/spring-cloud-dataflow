@@ -40,12 +40,14 @@ import org.springframework.cloud.dataflow.server.DataFlowServerUtil;
 import org.springframework.cloud.dataflow.server.config.apps.CommonApplicationProperties;
 import org.springframework.cloud.dataflow.server.repository.DeploymentIdRepository;
 import org.springframework.cloud.dataflow.server.repository.DeploymentKey;
+import org.springframework.cloud.dataflow.server.repository.NoSuchStandaloneDefinitionException;
 import org.springframework.cloud.dataflow.server.repository.NoSuchStreamDefinitionException;
 import org.springframework.cloud.dataflow.server.repository.StreamDefinitionRepository;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppStatus;
 import org.springframework.cloud.deployer.spi.app.DeploymentState;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import org.springframework.cloud.deployer.spi.core.AppRedeploymentRequest;
 import org.springframework.core.io.Resource;
 import org.springframework.hateoas.ExposesResourceFor;
 import org.springframework.http.HttpStatus;
@@ -71,7 +73,7 @@ import org.springframework.web.bind.annotation.RestController;
 @ExposesResourceFor(StreamDeploymentResource.class)
 public class StreamDeploymentController {
 
-	private static Log loggger = LogFactory.getLog(StreamDeploymentController.class);
+	private static Log logger = LogFactory.getLog(StreamDeploymentController.class);
 
 	private static final String DEFAULT_PARTITION_KEY_EXPRESSION = "payload";
 
@@ -180,6 +182,25 @@ public class StreamDeploymentController {
 		deployStream(stream, DeploymentPropertiesUtils.parse(properties));
 	}
 
+	@RequestMapping(value = "/{name}", method = RequestMethod.PUT)
+	@ResponseStatus(HttpStatus.OK)
+	public void redeploy(@PathVariable("name") String name,
+						 @RequestParam(required = false) String properties) {
+		StreamDefinition stream = this.repository.findOne(name);
+		if (stream == null) {
+			throw new NoSuchStandaloneDefinitionException(name);
+		}
+		String status = calculateStreamState(name);
+		if (DeploymentState.undeployed.equals(DeploymentState.valueOf(status))) {
+			throw new StreamNotDeployedException(name);
+		}
+		else if (DeploymentState.deploying.equals(DeploymentState.valueOf(status))) {
+			throw new StreamAlreadyDeployingException(name);
+		}
+
+		redeployStream(stream, DeploymentPropertiesUtils.parse(properties));
+	}
+
 	String calculateStreamState(String name) {
 		Set<DeploymentState> appStates = EnumSet.noneOf(DeploymentState.class);
 		StreamDefinition stream = this.repository.findOne(name);
@@ -247,7 +268,65 @@ public class StreamDeploymentController {
 			// If the deployer implementation handles the deployment request synchronously, log warning message if
 			// any exception is thrown out of the deployment and proceed to the next deployment.
 			catch (Exception e) {
-				loggger.warn(String.format("Exception when deploying the app %s: %s", currentApp, e.getMessage()));
+				logger.warn(String.format("Exception when deploying the app %s: %s", currentApp, e.getMessage()));
+			}
+		}
+	}
+
+	/**
+	 * TODO remove duplication with org.springframework.cloud.dataflow.server.controller.StreamDeploymentController#deployStream(org.springframework.cloud.dataflow.core.StreamDefinition, java.util.Map)
+	 * Redeploy a stream as defined by its {@link StreamDefinition} and optional deployment properties.
+	 * @param stream                     the stream to redeploy
+	 * @param streamDeploymentProperties the deployment properties for the stream
+	 */
+	void redeployStream(StreamDefinition stream, Map<String, String> streamDeploymentProperties) {
+		if (streamDeploymentProperties == null) {
+			streamDeploymentProperties = Collections.emptyMap();
+		}
+		Iterator<StreamAppDefinition> iterator = stream.getDeploymentOrderIterator();
+		int nextAppCount = 0;
+		boolean isDownStreamAppPartitioned = false;
+		while (iterator.hasNext()) {
+			StreamAppDefinition currentApp = iterator.next();
+			ApplicationType type = DataFlowServerUtil.determineApplicationType(currentApp);
+			Map<String, String> appDeploymentProperties = extractAppDeploymentProperties(currentApp, streamDeploymentProperties);
+			appDeploymentProperties.put(AppDeployer.GROUP_PROPERTY_KEY, currentApp.getStreamName());
+			boolean upstreamAppSupportsPartition = upstreamAppHasPartitionInfo(stream, currentApp, streamDeploymentProperties);
+			// Set instance count property
+			if (appDeploymentProperties.containsKey(AppDeployer.COUNT_PROPERTY_KEY)) {
+				appDeploymentProperties.put(StreamPropertyKeys.INSTANCE_COUNT, appDeploymentProperties.get(AppDeployer.COUNT_PROPERTY_KEY));
+			}
+			if (!type.equals(ApplicationType.source)) {
+				appDeploymentProperties.put(AppDeployer.INDEXED_PROPERTY_KEY, "true");
+			}
+			// consumer app partition properties
+			if (upstreamAppSupportsPartition) {
+				updateConsumerPartitionProperties(appDeploymentProperties);
+			}
+			// producer app partition properties
+			if (isDownStreamAppPartitioned) {
+				updateProducerPartitionProperties(appDeploymentProperties, nextAppCount);
+			}
+			nextAppCount = getInstanceCount(appDeploymentProperties);
+			isDownStreamAppPartitioned = isPartitionedConsumer(appDeploymentProperties,
+					upstreamAppSupportsPartition);
+			AppRegistration registration = this.registry.find(currentApp.getRegisteredAppName(), type);
+			Assert.notNull(registration, String.format("no application '%s' of type '%s' exists in the registry",
+					currentApp.getName(), type));
+			Resource resource = registration.getResource();
+			currentApp = qualifyProperties(currentApp, resource);
+			AppRedeploymentRequest request = currentApp.createRedeploymentRequest(resource,
+					whitelistProperties.qualifyProperties(appDeploymentProperties, resource));
+			try {
+				this.deploymentIdRepository.delete(DeploymentKey.forStreamAppDefinition(currentApp));
+
+				String id = this.deployer.redeploy(request);
+				this.deploymentIdRepository.save(DeploymentKey.forStreamAppDefinition(currentApp), id);
+			}
+			// If the deployer implementation handles the deployment request synchronously, log warning message if
+			// any exception is thrown out of the deployment and proceed to the next deployment.
+			catch (Exception e) {
+				logger.warn(String.format("Exception when deploying the app %s: %s", currentApp, e.getMessage()));
 			}
 		}
 	}

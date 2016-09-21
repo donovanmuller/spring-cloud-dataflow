@@ -157,8 +157,7 @@ public class StreamDefinitionController {
 	@ResponseStatus(HttpStatus.CREATED)
 	public void save(@RequestParam("name") String name,
 					 @RequestParam("definition") String dsl,
-					 @RequestParam(value = "deploy", defaultValue = "false")
-					 boolean deploy) {
+					 @RequestParam(value = "deploy", defaultValue = "false") boolean deploy) {
 		StreamDefinition stream = new StreamDefinition(name, dsl);
 		List<String> errorMessages = new ArrayList<>();
 		for (StreamAppDefinition streamAppDefinition: stream.getAppDefinitions()) {
@@ -175,6 +174,42 @@ public class StreamDefinitionController {
 		this.repository.save(stream);
 		if (deploy) {
 			deploymentController.deploy(name, null);
+		}
+	}
+
+	/**
+	 * Update an existing stream.
+	 *
+	 * @param name   	existing stream name
+	 * @param dsl    	new DSL definition for stream
+	 * @param redeploy 	if {@code true}, the stream is deployed/undeployed, then redeploy it
+	 */
+	@RequestMapping(value = "/{name}", method = RequestMethod.PUT)
+	@ResponseStatus(HttpStatus.OK)
+	public void update(@PathVariable("name") String name,
+					   @RequestParam("definition") String dsl,
+					   @RequestParam(value = "redeploy", defaultValue = "false")
+							   boolean redeploy) {
+		if (!repository.exists(name)) {
+			throw new NoSuchStreamDefinitionException(name,
+					String.format("An existing stream '%s' is not defined.", name));
+		}
+		StreamDefinition stream = new StreamDefinition(name, dsl);
+		List<String> errorMessages = new ArrayList<>();
+		for (StreamAppDefinition streamAppDefinition: stream.getAppDefinitions()) {
+			String appName = streamAppDefinition.getRegisteredAppName();
+			ApplicationType appType = DataFlowServerUtil.determineApplicationType(streamAppDefinition);
+			if (appRegistry.find(appName, appType) == null) {
+				errorMessages.add(String.format("Application name '%s' with type '%s' does not exist in the app registry.",
+						appName, appType));
+			}
+		}
+		if (!errorMessages.isEmpty()) {
+			throw new IllegalArgumentException(StringUtils.collectionToDelimitedString(errorMessages, System.lineSeparator()));
+		}
+		this.repository.update(stream);
+		if (redeploy) {
+			deploymentController.redeploy(name, null);
 		}
 	}
 

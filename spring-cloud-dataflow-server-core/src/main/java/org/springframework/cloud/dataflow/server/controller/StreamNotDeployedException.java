@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,15 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.dataflow.server.repository;
-
-import org.springframework.cloud.dataflow.core.StreamDefinition;
-import org.springframework.data.repository.PagingAndSortingRepository;
-import org.springframework.stereotype.Repository;
+package org.springframework.cloud.dataflow.server.controller;
 
 /**
- * @author Mark Fisher
- * @author Donovan Muller
+ * Thrown when a stream is not currently deployed when the controller gets a request to redeploy it.
+ *
  */
-@Repository
-public interface StreamDefinitionRepository extends PagingAndSortingRepository<StreamDefinition, String> {
+public class StreamNotDeployedException extends RuntimeException {
 
-    StreamDefinition update(StreamDefinition definition);
+	public StreamNotDeployedException(String name) {
+		super(String.format("Stream '%s' is not currently deployed", name));
+	}
 }

@@ -142,18 +142,15 @@ public class DataFlowControllerAutoConfiguration {
 			StreamDefinitionRepository streamDefinitionRepository,
 			TaskDefinitionRepository taskDefinitionRepository,
 			StandaloneDefinitionRepository standaloneDefinitionRepository,
-			DeploymentIdRepository deploymentIdRepository, AppRegistry registry,
-			AppDeployer deployer,
-			ApplicationConfigurationMetadataResolver metadataResolver,
-			CommonApplicationProperties appsProperties,
+			DeploymentIdRepository deploymentIdRepository,
 			StreamDeploymentController streamDeploymentController,
 			TaskDeploymentController taskDeploymentController,
 			StandaloneDeploymentController standaloneDeploymentController) {
 		return new ApplicationGroupDeploymentController(repository,
 				streamDefinitionRepository, taskDefinitionRepository,
-				standaloneDefinitionRepository, deploymentIdRepository, registry,
-				deployer, metadataResolver, appsProperties, streamDeploymentController,
-				taskDeploymentController, standaloneDeploymentController);
+				standaloneDefinitionRepository, deploymentIdRepository,
+				streamDeploymentController, taskDeploymentController,
+				standaloneDeploymentController);
 	}
 
     @Bean
