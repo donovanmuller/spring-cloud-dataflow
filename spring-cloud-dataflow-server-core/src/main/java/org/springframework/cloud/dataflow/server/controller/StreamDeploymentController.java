@@ -186,7 +186,7 @@ public class StreamDeploymentController {
 		deployStream(stream, DeploymentPropertiesUtils.parse(properties));
 	}
 
-	private String calculateStreamState(String name) {
+	String calculateStreamState(String name) {
 		Set<DeploymentState> appStates = EnumSet.noneOf(DeploymentState.class);
 		StreamDefinition stream = this.repository.findOne(name);
 		for (StreamAppDefinition appDefinition : stream.getAppDefinitions()) {
@@ -208,7 +208,7 @@ public class StreamDeploymentController {
 	 * @param stream                     the stream to deploy
 	 * @param streamDeploymentProperties the deployment properties for the stream
 	 */
-	private void deployStream(StreamDefinition stream, Map<String, String> streamDeploymentProperties) {
+	void deployStream(StreamDefinition stream, Map<String, String> streamDeploymentProperties) {
 		if (streamDeploymentProperties == null) {
 			streamDeploymentProperties = Collections.emptyMap();
 		}
@@ -445,7 +445,7 @@ public class StreamDeploymentController {
 	 * Undeploy the given stream.
 	 * @param stream stream to undeploy
 	 */
-	private void undeployStream(StreamDefinition stream) {
+	void undeployStream(StreamDefinition stream) {
 		for (StreamAppDefinition appDefinition : stream.getAppDefinitions()) {
 			String key = DeploymentKey.forStreamAppDefinition(appDefinition);
 			String id = this.deploymentIdRepository.findOne(key);

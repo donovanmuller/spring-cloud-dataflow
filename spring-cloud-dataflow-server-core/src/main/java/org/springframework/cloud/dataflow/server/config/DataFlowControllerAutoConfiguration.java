@@ -24,6 +24,7 @@ import javax.sql.DataSource;
 import org.springframework.analytics.metrics.AggregateCounterRepository;
 import org.springframework.analytics.metrics.FieldValueCounterRepository;
 import org.springframework.batch.admin.service.JobService;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.actuate.metrics.repository.MetricRepository;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -39,6 +40,8 @@ import org.springframework.cloud.dataflow.server.config.apps.CommonApplicationPr
 import org.springframework.cloud.dataflow.server.config.features.FeaturesProperties;
 import org.springframework.cloud.dataflow.server.controller.AggregateCounterController;
 import org.springframework.cloud.dataflow.server.controller.AppRegistryController;
+import org.springframework.cloud.dataflow.server.controller.ApplicationGroupDefinitionController;
+import org.springframework.cloud.dataflow.server.controller.ApplicationGroupDeploymentController;
 import org.springframework.cloud.dataflow.server.controller.CompletionController;
 import org.springframework.cloud.dataflow.server.controller.CounterController;
 import org.springframework.cloud.dataflow.server.controller.FeaturesController;
@@ -60,12 +63,14 @@ import org.springframework.cloud.dataflow.server.controller.TaskDeploymentContro
 import org.springframework.cloud.dataflow.server.controller.TaskExecutionController;
 import org.springframework.cloud.dataflow.server.controller.UiController;
 import org.springframework.cloud.dataflow.server.controller.security.SecurityController;
+import org.springframework.cloud.dataflow.server.repository.ApplicationGroupDefinitionRepository;
 import org.springframework.cloud.dataflow.server.repository.DeploymentIdRepository;
 import org.springframework.cloud.dataflow.server.repository.StandaloneDefinitionRepository;
 import org.springframework.cloud.dataflow.server.repository.StreamDefinitionRepository;
 import org.springframework.cloud.dataflow.server.repository.TaskDefinitionRepository;
 import org.springframework.cloud.dataflow.server.service.TaskJobService;
 import org.springframework.cloud.dataflow.server.service.TaskService;
+import org.springframework.cloud.dataflow.server.service.impl.ApplicationGroupRegistryService;
 import org.springframework.cloud.deployer.resource.maven.MavenProperties;
 import org.springframework.cloud.deployer.resource.maven.MavenResourceLoader;
 import org.springframework.cloud.deployer.resource.registry.UriRegistry;
@@ -113,6 +118,46 @@ public class DataFlowControllerAutoConfiguration {
 		return new AppInstanceController(appDeployer);
 	}
 
+	@Bean
+	@ConditionalOnBean(ApplicationGroupDefinitionRepository.class)
+	public ApplicationGroupDefinitionController applicationGroupDefinitionController(
+			ApplicationGroupDefinitionRepository repository,
+			StreamDefinitionRepository streamDefinitionRepository,
+			TaskDefinitionRepository taskDefinitionRepository,
+			StandaloneDefinitionRepository standaloneDefinitionRepository,
+			DeploymentIdRepository deploymentIdRepository,
+			ApplicationGroupDeploymentController deploymentController,
+			AppDeployer deployer, AppRegistry appRegistry,
+			DelegatingResourceLoader resourceLoader,
+			ApplicationGroupRegistryService applicationGroupRegistryService) {
+		return new ApplicationGroupDefinitionController(repository,
+				deploymentIdRepository, streamDefinitionRepository,
+				taskDefinitionRepository, standaloneDefinitionRepository,
+				deploymentController, deployer, appRegistry, resourceLoader,
+				applicationGroupRegistryService);
+	}
+
+	@Bean
+	@ConditionalOnBean(ApplicationGroupDefinitionRepository.class)
+	public ApplicationGroupDeploymentController applicationGroupDeploymentController(
+			ApplicationGroupDefinitionRepository repository,
+			StreamDefinitionRepository streamDefinitionRepository,
+			TaskDefinitionRepository taskDefinitionRepository,
+			StandaloneDefinitionRepository standaloneDefinitionRepository,
+			DeploymentIdRepository deploymentIdRepository, AppRegistry registry,
+			AppDeployer deployer,
+			ApplicationConfigurationMetadataResolver metadataResolver,
+			CommonApplicationProperties appsProperties,
+			StreamDeploymentController streamDeploymentController,
+			TaskDeploymentController taskDeploymentController,
+			StandaloneDeploymentController standaloneDeploymentController) {
+		return new ApplicationGroupDeploymentController(repository,
+				streamDefinitionRepository, taskDefinitionRepository,
+				standaloneDefinitionRepository, deploymentIdRepository, registry,
+				deployer, metadataResolver, appsProperties, streamDeploymentController,
+				taskDeploymentController, standaloneDeploymentController);
+	}
+
     @Bean
     @ConditionalOnBean(StandaloneDefinitionRepository.class)
     public StandaloneDefinitionController standaloneDefinitionController(StandaloneDefinitionRepository repository,
@@ -154,6 +199,14 @@ public class DataFlowControllerAutoConfiguration {
 
 	@Bean
 	@ConditionalOnBean(StreamDefinitionRepository.class)
+    public RuntimeAppsController runtimeAppsController(StreamDefinitionRepository repository,
+            DeploymentIdRepository deploymentIdRepository,
+            AppDeployer appDeployer) {
+        return new RuntimeAppsController(repository, deploymentIdRepository, appDeployer);
+	}
+
+	@Bean
+	@ConditionalOnBean({StreamDefinitionRepository.class, StandaloneDefinitionRepository.class})
     public RuntimeAppsController runtimeAppsController(StandaloneDefinitionRepository standaloneDefinitionRepository,
             StreamDefinitionRepository repository,
             DeploymentIdRepository deploymentIdRepository,

@@ -50,6 +50,8 @@ public final class DataflowRdbmsInitializer implements InitializingBean {
 
 	private static final String COMMON_SCHEMA_SUFFIX = "common";
 
+	private static final String APPLICATION_GROUP_SCHEMA_SUFFIX = "application-groups";
+
 	private static final String STANDALONE_SCHEMA_SUFFIX = "standalone";
 
 	private static final String STREAMS_SCHEMA_SUFFIX = "streams";
@@ -106,6 +108,13 @@ public final class DataflowRdbmsInitializer implements InitializingBean {
 			logger.info(String.format("Adding dataflow schema %s for %s database", commonSchemaLocation,
 					platform));
 			populator.addScript(resourceLoader.getResource(commonSchemaLocation));
+			if (featuresProperties.isApplicationGroupsEnabled()) {
+				String applicationGroupSchemaLocation = schemaLocation;
+				applicationGroupSchemaLocation = applicationGroupSchemaLocation.replace("@@suffix@@", APPLICATION_GROUP_SCHEMA_SUFFIX);
+				logger.info(String.format("Adding dataflow schema %s for %s database", applicationGroupSchemaLocation,
+						platform));
+				populator.addScript(resourceLoader.getResource(applicationGroupSchemaLocation));
+			}
 			if (featuresProperties.isStandaloneEnabled()) {
 				String standaloneSchemaLocation = schemaLocation;
 				standaloneSchemaLocation = standaloneSchemaLocation.replace("@@suffix@@", STANDALONE_SCHEMA_SUFFIX);

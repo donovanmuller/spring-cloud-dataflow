@@ -26,6 +26,11 @@ package org.springframework.cloud.dataflow.rest.client;
 public interface DataFlowOperations {
 
 	/**
+	 * Application group application related operations.
+	 */
+	ApplicationGroupOperations applicationGroupOperations();
+	
+	/**
 	 * Standalone application related operations.
 	 */
 	StandaloneOperations standaloneOperations();

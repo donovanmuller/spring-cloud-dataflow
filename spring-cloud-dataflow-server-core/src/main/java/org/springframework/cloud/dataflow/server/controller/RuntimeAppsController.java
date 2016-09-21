@@ -110,6 +110,25 @@ public class RuntimeAppsController {
         this.appDeployer = appDeployer;
     }
 
+    /**
+	 * Instantiates a new runtime apps controller.
+	 *
+	 * @param streamDefinitionRepository the repository this controller will use for stream CRUD operations
+	 * @param deploymentIdRepository the repository this controller will use for deployment IDs
+	 * @param appDeployer the deployer this controller will use to deploy stream apps
+	 */
+    public RuntimeAppsController(StreamDefinitionRepository streamDefinitionRepository,
+            DeploymentIdRepository deploymentIdRepository,
+            AppDeployer appDeployer) {
+        Assert.notNull(streamDefinitionRepository, "StreamDefinitionRepository must not be null");
+        Assert.notNull(deploymentIdRepository, "DeploymentIdRepository must not be null");
+        Assert.notNull(appDeployer, "AppDeployer must not be null");
+		this.standaloneDefinitionRepository = null;
+        this.streamDefinitionRepository = streamDefinitionRepository;
+        this.deploymentIdRepository = deploymentIdRepository;
+        this.appDeployer = appDeployer;
+    }
+
 	@RequestMapping
 	public PagedResources<AppStatusResource> list(PagedResourcesAssembler<AppStatus> assembler) {
 		List<AppStatus> values = new ArrayList<>();
@@ -122,10 +141,12 @@ public class RuntimeAppsController {
 				}
 			}
 		}
-		for (StandaloneDefinition standaloneDefinition : this.standaloneDefinitionRepository.findAll()) {
-			String id = this.deploymentIdRepository.findOne(DeploymentKey.forStandaloneAppDefinition(standaloneDefinition));
-			if (id != null) {
-				values.add(appDeployer.status(id));
+		if (standaloneDefinitionRepository != null) {
+			for (StandaloneDefinition standaloneDefinition : this.standaloneDefinitionRepository.findAll()) {
+				String id = this.deploymentIdRepository.findOne(DeploymentKey.forStandaloneAppDefinition(standaloneDefinition));
+				if (id != null) {
+					values.add(appDeployer.status(id));
+				}
 			}
 		}
 		Collections.sort(values, new Comparator<AppStatus>() {

@@ -49,6 +49,11 @@ public class DataFlowTemplate implements DataFlowOperations {
 	protected final Map<String, UriTemplate> resources = new HashMap<String, UriTemplate>();
 
 	/**
+	 * REST client for application group operations.
+	 */
+	private final ApplicationGroupTemplate applicationGroupOperations;
+
+	/**
 	 * REST client for stream operations.
 	 */
 	private final StandaloneOperations standaloneOperations;
@@ -98,10 +103,15 @@ public class DataFlowTemplate implements DataFlowOperations {
 	 */
 	private final RuntimeOperations runtimeOperations;
 
-
 	public DataFlowTemplate(URI baseURI, RestTemplate restTemplate) {
 		this.restTemplate = restTemplate;
 		ResourceSupport resourceSupport = restTemplate.getForObject(baseURI, ResourceSupport.class);
+		if (resourceSupport.hasLink(ApplicationGroupTemplate.DEFINITIONS_REL)) {
+			this.applicationGroupOperations = new ApplicationGroupTemplate(restTemplate, resourceSupport);
+		}
+		else {
+			this.applicationGroupOperations = null;
+		}
 		if (resourceSupport.hasLink(StandaloneTemplate.DEFINITIONS_REL)) {
 			this.standaloneOperations = new StandaloneTemplate(restTemplate, resourceSupport);
 		}
@@ -145,6 +155,11 @@ public class DataFlowTemplate implements DataFlowOperations {
 					+ resourceSupport + "'");
 		}
 		return link;
+	}
+
+	@Override
+	public ApplicationGroupOperations applicationGroupOperations() {
+		return applicationGroupOperations;
 	}
 
 	@Override

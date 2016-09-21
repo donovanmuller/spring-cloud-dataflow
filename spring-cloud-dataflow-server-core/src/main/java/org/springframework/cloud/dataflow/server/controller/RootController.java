@@ -22,6 +22,8 @@ import org.springframework.cloud.dataflow.rest.resource.AggregateCounterResource
 import org.springframework.cloud.dataflow.rest.resource.AppInstanceStatusResource;
 import org.springframework.cloud.dataflow.rest.resource.AppRegistrationResource;
 import org.springframework.cloud.dataflow.rest.resource.AppStatusResource;
+import org.springframework.cloud.dataflow.rest.resource.ApplicationGroupDefinitionResource;
+import org.springframework.cloud.dataflow.rest.resource.ApplicationGroupDeploymentResource;
 import org.springframework.cloud.dataflow.rest.resource.CompletionProposalsResource;
 import org.springframework.cloud.dataflow.rest.resource.CounterResource;
 import org.springframework.cloud.dataflow.rest.resource.FieldValueCounterResource;
@@ -83,6 +85,12 @@ public class RootController {
 	@RequestMapping("/")
 	public ResourceSupport info() {
 		ResourceSupport resourceSupport = new ResourceSupport();
+		if (featuresProperties.isApplicationGroupsEnabled()) {
+			resourceSupport.add(entityLinks.linkToCollectionResource(ApplicationGroupDefinitionResource.class).withRel("application-groups/definitions"));
+			resourceSupport.add(unescapeTemplateVariables(entityLinks.linkToSingleResource(ApplicationGroupDefinitionResource.class, "{name}").withRel("application-groups/definitions/definition")));
+			resourceSupport.add(entityLinks.linkToCollectionResource(ApplicationGroupDeploymentResource.class).withRel("application-groups/deployments"));
+			resourceSupport.add(unescapeTemplateVariables(entityLinks.linkToSingleResource(ApplicationGroupDeploymentResource.class, "{name}").withRel("application-groups/deployments/deployment")));
+		}
 		if (featuresProperties.isStandaloneEnabled()) {
 			resourceSupport.add(entityLinks.linkToCollectionResource(StandaloneDefinitionResource.class).withRel("standalone/definitions"));
 			resourceSupport.add(unescapeTemplateVariables(entityLinks.linkToSingleResource(StandaloneDefinitionResource.class, "{name}").withRel("standalone/definitions/definition")));
