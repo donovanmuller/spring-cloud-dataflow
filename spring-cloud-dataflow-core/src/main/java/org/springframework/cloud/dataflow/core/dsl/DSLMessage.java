@@ -38,6 +38,7 @@ import java.text.MessageFormat;
  * @author Andy Clement
  * @author Ilayaperumal Gopinathan
  * @author Mark Fisher
+ * @author Donovan Muller
  */
 public enum DSLMessage {
 
@@ -91,7 +92,10 @@ public enum DSLMessage {
 			"no whitespace is allowed between dot and components of a name"),
 	DESTINATIONS_UNSUPPORTED_HERE(ERROR, 146, "a destination is not supported in this kind of definition"),
 	EXPECTED_WHITESPACE_AFTER_LABEL_COLON(ERROR, 147, "whitespace is expected after an app label"),
-	EXPECTED_STREAM_NAME_AFTER_LABEL_COLON(ERROR, 148, "stream name is expected after an app label")
+	EXPECTED_STREAM_NAME_AFTER_LABEL_COLON(ERROR, 148, "stream name is expected after an app label"),
+	ILLEGAL_STANDALONE_NAME(ERROR, 149, "illegal name for a standalone application ''{0}''"),
+	ILLEGAL_APPLICATION_GROUP_NAME(ERROR, 150, "illegal name for an application group ''{0}''"),
+	MISSING_DEFINITION_TYPE(ERROR, 151, "app ''{0}'' (at position {1}) should have a valid definition type ({2}) defined"),
 	;
 
 	private Kind kind;

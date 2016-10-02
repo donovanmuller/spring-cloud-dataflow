@@ -41,9 +41,19 @@ public interface StreamOperations {
 	public StreamDefinitionResource createStream(String name, String definition, boolean deploy);
 
 	/**
+	 * Update an existing stream, optionally redeploying it.
+	 */
+	public StreamDefinitionResource updateStream(String name, String definition, boolean redeploy);
+
+	/**
 	 * Deploy an already created stream.
 	 */
 	public void deploy(String name, Map<String, String> properties);
+
+	/**
+	 * Redeploy an already deployed stream.
+	 */
+	public void redeploy(String name, Map<String, String> properties);
 
 	/**
 	 * Undeploy a deployed stream, retaining its definition.

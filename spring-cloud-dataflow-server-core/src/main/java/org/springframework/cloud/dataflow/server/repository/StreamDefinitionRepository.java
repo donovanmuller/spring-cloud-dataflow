@@ -24,10 +24,12 @@ import org.springframework.stereotype.Repository;
 
 /**
  * @author Mark Fisher
+ * @author Donovan Muller
  */
 @Repository
 public interface StreamDefinitionRepository extends PagingAndSortingRepository<StreamDefinition, String> {
 
 	Page<StreamDefinition>search(SearchPageable searchPageable);
 
+    StreamDefinition update(StreamDefinition definition);
 }

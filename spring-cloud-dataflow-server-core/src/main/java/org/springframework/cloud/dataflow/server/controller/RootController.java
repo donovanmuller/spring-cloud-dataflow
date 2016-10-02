@@ -26,9 +26,13 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.cloud.dataflow.rest.resource.AppInstanceStatusResource;
 import org.springframework.cloud.dataflow.rest.resource.AppRegistrationResource;
 import org.springframework.cloud.dataflow.rest.resource.AppStatusResource;
+import org.springframework.cloud.dataflow.rest.resource.ApplicationGroupDefinitionResource;
+import org.springframework.cloud.dataflow.rest.resource.ApplicationGroupDeploymentResource;
 import org.springframework.cloud.dataflow.rest.resource.CompletionProposalsResource;
 import org.springframework.cloud.dataflow.rest.resource.JobExecutionResource;
 import org.springframework.cloud.dataflow.rest.resource.JobInstanceResource;
+import org.springframework.cloud.dataflow.rest.resource.StandaloneDefinitionResource;
+import org.springframework.cloud.dataflow.rest.resource.StandaloneDeploymentResource;
 import org.springframework.cloud.dataflow.rest.resource.StepExecutionProgressInfoResource;
 import org.springframework.cloud.dataflow.rest.resource.StepExecutionResource;
 import org.springframework.cloud.dataflow.rest.resource.StreamDefinitionResource;
@@ -51,6 +55,7 @@ import org.springframework.web.util.UriComponents;
  * @author Ilayaperumal Gopinathan
  * @author Glenn Renfro
  * @author Mark Fisher
+ * @author Donovan Muller
  */
 @RestController
 @EnableConfigurationProperties(FeaturesProperties.class)
@@ -83,7 +88,19 @@ public class RootController {
 	@RequestMapping("/")
 	public ResourceSupport info() {
 		ResourceSupport resourceSupport = new ResourceSupport();
-		resourceSupport.add(new Link(dashboard(""), "dashboard"));
+        resourceSupport.add(new Link(dashboard(""), "dashboard"));
+		if (featuresProperties.isApplicationGroupsEnabled()) {
+			resourceSupport.add(entityLinks.linkToCollectionResource(ApplicationGroupDefinitionResource.class).withRel("application-groups/definitions"));
+			resourceSupport.add(unescapeTemplateVariables(entityLinks.linkToSingleResource(ApplicationGroupDefinitionResource.class, "{name}").withRel("application-groups/definitions/definition")));
+			resourceSupport.add(entityLinks.linkToCollectionResource(ApplicationGroupDeploymentResource.class).withRel("application-groups/deployments"));
+			resourceSupport.add(unescapeTemplateVariables(entityLinks.linkToSingleResource(ApplicationGroupDeploymentResource.class, "{name}").withRel("application-groups/deployments/deployment")));
+		}
+		if (featuresProperties.isStandaloneEnabled() || featuresProperties.isApplicationGroupsEnabled()) {
+			resourceSupport.add(entityLinks.linkToCollectionResource(StandaloneDefinitionResource.class).withRel("standalone/definitions"));
+			resourceSupport.add(unescapeTemplateVariables(entityLinks.linkToSingleResource(StandaloneDefinitionResource.class, "{name}").withRel("standalone/definitions/definition")));
+			resourceSupport.add(entityLinks.linkToCollectionResource(StandaloneDeploymentResource.class).withRel("standalone/deployments"));
+			resourceSupport.add(unescapeTemplateVariables(entityLinks.linkToSingleResource(StandaloneDeploymentResource.class, "{name}").withRel("standalone/deployments/deployment")));
+		}
 		if (featuresProperties.isStreamsEnabled()) {
 			resourceSupport.add(entityLinks.linkToCollectionResource(StreamDefinitionResource.class).withRel("streams/definitions"));
 			resourceSupport.add(unescapeTemplateVariables(entityLinks.linkToSingleResource(StreamDefinitionResource.class, "{name}").withRel("streams/definitions/definition")));

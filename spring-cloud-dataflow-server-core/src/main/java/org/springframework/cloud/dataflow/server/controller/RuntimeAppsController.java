@@ -21,12 +21,15 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import org.springframework.cloud.dataflow.core.StandaloneDefinition;
 import org.springframework.cloud.dataflow.core.StreamAppDefinition;
 import org.springframework.cloud.dataflow.core.StreamDefinition;
 import org.springframework.cloud.dataflow.rest.resource.AppInstanceStatusResource;
 import org.springframework.cloud.dataflow.rest.resource.AppStatusResource;
+import org.springframework.cloud.dataflow.server.config.features.FeaturesProperties;
 import org.springframework.cloud.dataflow.server.repository.DeploymentIdRepository;
 import org.springframework.cloud.dataflow.server.repository.DeploymentKey;
+import org.springframework.cloud.dataflow.server.repository.StandaloneDefinitionRepository;
 import org.springframework.cloud.dataflow.server.repository.StreamDefinitionRepository;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.app.AppInstanceStatus;
@@ -51,6 +54,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @author Eric Bottard
  * @author Mark Fisher
  * @author Janne Valkealahti
+ * @author Donovan Muller
  */
 @RestController
 @RequestMapping("/runtime/apps")
@@ -63,6 +67,11 @@ public class RuntimeAppsController {
 			return i1.getId().compareTo(i2.getId());
 		}
 	};
+
+	/**
+	 * The repository this controller will use for standalone application CRUD operations.
+	 */
+	private final StandaloneDefinitionRepository standaloneDefinitionRepository;
 
 	/**
 	 * The repository this controller will use for stream CRUD operations.
@@ -81,21 +90,30 @@ public class RuntimeAppsController {
 
 	private final ResourceAssembler<AppStatus, AppStatusResource> statusAssembler = new Assembler();
 
+	private final FeaturesProperties featuresProperties;
+
 	/**
 	 * Instantiates a new runtime apps controller.
 	 *
+	 * @param standaloneDefinitionRepository the repository this controller will use for standalone application CRUD operations
 	 * @param streamDefinitionRepository the repository this controller will use for stream CRUD operations
 	 * @param deploymentIdRepository the repository this controller will use for deployment IDs
 	 * @param appDeployer the deployer this controller will use to deploy stream apps
+	 * @param featuresProperties
 	 */
-	public RuntimeAppsController(StreamDefinitionRepository streamDefinitionRepository, DeploymentIdRepository deploymentIdRepository,
-			AppDeployer appDeployer) {
+	public RuntimeAppsController(StandaloneDefinitionRepository standaloneDefinitionRepository,
+			StreamDefinitionRepository streamDefinitionRepository, DeploymentIdRepository deploymentIdRepository,
+			AppDeployer appDeployer, FeaturesProperties featuresProperties) {
+		Assert.notNull(standaloneDefinitionRepository, "StandaloneDefinitionRepository must not be null");
 		Assert.notNull(streamDefinitionRepository, "StreamDefinitionRepository must not be null");
 		Assert.notNull(deploymentIdRepository, "DeploymentIdRepository must not be null");
 		Assert.notNull(appDeployer, "AppDeployer must not be null");
+		Assert.notNull(featuresProperties, "FeaturesProperties must not be null");
+		this.standaloneDefinitionRepository = standaloneDefinitionRepository;
 		this.streamDefinitionRepository = streamDefinitionRepository;
 		this.deploymentIdRepository = deploymentIdRepository;
 		this.appDeployer = appDeployer;
+		this.featuresProperties = featuresProperties;
 	}
 
 	@RequestMapping
@@ -105,6 +123,14 @@ public class RuntimeAppsController {
 			for (StreamAppDefinition streamAppDefinition : streamDefinition.getAppDefinitions()) {
 				String key = DeploymentKey.forStreamAppDefinition(streamAppDefinition);
 				String id = this.deploymentIdRepository.findOne(key);
+				if (id != null) {
+					values.add(appDeployer.status(id));
+				}
+			}
+		}
+		if (featuresProperties.isStandaloneEnabled() || featuresProperties.isApplicationGroupsEnabled()) {
+			for (StandaloneDefinition standaloneDefinition : this.standaloneDefinitionRepository.findAll()) {
+				String id = this.deploymentIdRepository.findOne(DeploymentKey.forStandaloneAppDefinition(standaloneDefinition));
 				if (id != null) {
 					values.add(appDeployer.status(id));
 				}

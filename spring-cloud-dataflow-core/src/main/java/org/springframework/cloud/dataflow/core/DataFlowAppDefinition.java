@@ -22,6 +22,7 @@ import java.util.Map;
 
 import org.springframework.cloud.deployer.spi.core.AppDefinition;
 import org.springframework.cloud.deployer.spi.core.AppDeploymentRequest;
+import org.springframework.cloud.deployer.spi.core.AppRedeploymentRequest;
 import org.springframework.core.io.Resource;
 import org.springframework.util.Assert;
 
@@ -110,6 +111,17 @@ abstract class DataFlowAppDefinition {
 	}
 
 	/**
+	 * Create a redeployment request for this app definition.
+	 *
+	 * @param resource the resource for the underlying artifact
+	 * @param properties app and deployment properties
+	 * @return an {@link AppRedeploymentRequest}
+	 */
+	public AppRedeploymentRequest createRedeploymentRequest(Resource resource, Map<String, String> properties) {
+		return createRedeploymentRequest(resource, properties, null);
+	}
+
+	/**
 	 * Create a deployment request for this app definition.
 	 *
 	 * @param resource the resource for the underlying artifact
@@ -134,5 +146,13 @@ abstract class DataFlowAppDefinition {
 		return (runtimeParams != null)
 				? new AppDeploymentRequest(appDefinition, resource, deploymentProperties, runtimeParams)
 				: new AppDeploymentRequest(appDefinition, resource, deploymentProperties);
+	}
+
+	public AppRedeploymentRequest createRedeploymentRequest(final Resource resource, final Map<String, String> appProperties, List<String> runtimeParams) {
+		AppDeploymentRequest deploymentRequest = createDeploymentRequest(resource, appProperties, runtimeParams);
+		return new AppRedeploymentRequest(deploymentRequest.getDefinition(),
+				deploymentRequest.getResource(),
+				deploymentRequest.getDeploymentProperties(),
+				deploymentRequest.getCommandlineArguments());
 	}
 }

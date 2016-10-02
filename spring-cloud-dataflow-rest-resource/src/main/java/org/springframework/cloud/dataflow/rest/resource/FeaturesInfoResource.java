@@ -22,6 +22,7 @@ import org.springframework.hateoas.ResourceSupport;
  * Provides features information.
  *
  * @author Ilayaperumal Gopinathan
+ * @author Donovan Muller
  */
 public class FeaturesInfoResource extends ResourceSupport {
 	/**
@@ -35,6 +36,10 @@ public class FeaturesInfoResource extends ResourceSupport {
 	private boolean streamsEnabled = true;
 
 	private boolean tasksEnabled = true;
+
+	private boolean standaloneEnabled;
+
+	private boolean applicationGroupsEnabled;
 
 	public boolean isAnalyticsEnabled() {
 		return this.analyticsEnabled;
@@ -60,5 +65,19 @@ public class FeaturesInfoResource extends ResourceSupport {
 		this.tasksEnabled = tasksEnabled;
 	}
 
+	public void setStandaloneEnabled(boolean standaloneEnabled) {
+		this.standaloneEnabled = standaloneEnabled;
+	}
 
+	public boolean isStandaloneEnabled() {
+		return standaloneEnabled;
+	}
+
+	public void setApplicationGroupsEnabled(boolean applicationGroupsEnabled) {
+		this.applicationGroupsEnabled = applicationGroupsEnabled;
+	}
+
+	public boolean isApplicationGroupsEnabled() {
+		return applicationGroupsEnabled;
+	}
 }

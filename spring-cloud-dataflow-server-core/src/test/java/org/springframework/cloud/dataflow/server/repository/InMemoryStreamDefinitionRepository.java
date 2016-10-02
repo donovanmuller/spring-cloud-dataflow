@@ -128,4 +128,9 @@ public class InMemoryStreamDefinitionRepository implements StreamDefinitionRepos
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
+	public StreamDefinition update(final StreamDefinition definition) {
+		definitions.put(definition.getName(), definition);
+		return definition;
+	}
 }

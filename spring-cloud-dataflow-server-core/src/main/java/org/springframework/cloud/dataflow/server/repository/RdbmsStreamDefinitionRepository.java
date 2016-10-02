@@ -58,6 +58,14 @@ public class RdbmsStreamDefinitionRepository extends AbstractRdbmsKeyValueReposi
 	}
 
 	@Override
+	public StreamDefinition update(StreamDefinition definition) {
+		Assert.notNull(definition, "definition must not be null");
+		Object[] updateParameters = new Object[]{definition.getDslText(), definition.getName()};
+		jdbcTemplate.update(updateRow, updateParameters, new int[]{Types.VARCHAR, Types.CLOB});
+		return definition;
+	}
+
+	@Override
 	public void delete(StreamDefinition definition) {
 		Assert.notNull(definition, "definition must not null");
 		delete(definition.getName());

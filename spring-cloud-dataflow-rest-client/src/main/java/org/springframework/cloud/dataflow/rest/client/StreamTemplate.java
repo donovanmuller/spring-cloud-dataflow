@@ -22,10 +22,12 @@ import org.springframework.cloud.dataflow.rest.resource.StreamDefinitionResource
 import org.springframework.cloud.dataflow.rest.util.DeploymentPropertiesUtils;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.ResourceSupport;
+import org.springframework.http.HttpMethod;
 import org.springframework.util.Assert;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 /**
  * Implementation for {@link StreamOperations}.
@@ -86,7 +88,27 @@ public class StreamTemplate implements StreamOperations {
 	}
 
 	@Override
+	public StreamDefinitionResource updateStream(final String name, final String definition, final boolean redeploy) {
+		StreamDefinitionResource streamDefinition = restTemplate.exchange(
+				UriComponentsBuilder.fromHttpUrl(definitionLink.expand(name).getHref())
+						.queryParam("definition", definition)
+						.queryParam("redeploy", Boolean.toString(redeploy))
+						.build(false).toUri(),
+				HttpMethod.PUT,
+				null,
+				StreamDefinitionResource.class).getBody();
+		return streamDefinition;
+	}
+
+	@Override
 	public void deploy(String name, Map<String, String> properties) {
+		MultiValueMap<String, Object> values = new LinkedMultiValueMap<>();
+		values.add("properties", DeploymentPropertiesUtils.format(properties));
+		restTemplate.postForObject(deploymentLink.expand(name).getHref(), values, Object.class);
+	}
+
+	@Override
+	public void redeploy(final String name, final Map<String, String> properties) {
 		MultiValueMap<String, Object> values = new LinkedMultiValueMap<>();
 		values.add("properties", DeploymentPropertiesUtils.format(properties));
 		restTemplate.postForObject(deploymentLink.expand(name).getHref(), values, Object.class);
