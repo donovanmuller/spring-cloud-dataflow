@@ -56,6 +56,7 @@ import org.springframework.web.client.RestTemplate;
  *  @author Gary Russell
  *  @author Eric Bottard
  *  @author Gunnar Hillert
+ *  @author Donovan Muller
  */
 public class DataFlowTemplate implements DataFlowOperations {
 
@@ -68,6 +69,11 @@ public class DataFlowTemplate implements DataFlowOperations {
 	 * Holds discovered URLs of the API.
 	 */
 	protected final Map<String, UriTemplate> resources = new HashMap<String, UriTemplate>();
+
+	/**
+	 * REST client for stream operations.
+	 */
+	private final StandaloneOperations standaloneOperations;
 
 	/**
 	 * REST client for stream operations.
@@ -148,6 +154,12 @@ public class DataFlowTemplate implements DataFlowOperations {
 
 		this.restTemplate = prepareRestTemplate(restTemplate);
 		final ResourceSupport resourceSupport = restTemplate.getForObject(baseURI, ResourceSupport.class);
+        if (resourceSupport.hasLink(StandaloneTemplate.DEFINITIONS_REL)) {
+            this.standaloneOperations = new StandaloneTemplate(restTemplate, resourceSupport);
+        }
+        else {
+            this.standaloneOperations = null;
+        }
 		if (resourceSupport.hasLink(StreamTemplate.DEFINITIONS_REL)) {
 			this.streamOperations = new StreamTemplate(restTemplate, resourceSupport);
 			this.runtimeOperations = new RuntimeTemplate(restTemplate, resourceSupport);
@@ -185,6 +197,11 @@ public class DataFlowTemplate implements DataFlowOperations {
 					+ resourceSupport + "'");
 		}
 		return link;
+	}
+
+	@Override
+	public StandaloneOperations standaloneOperations() {
+		return standaloneOperations;
 	}
 
 	@Override

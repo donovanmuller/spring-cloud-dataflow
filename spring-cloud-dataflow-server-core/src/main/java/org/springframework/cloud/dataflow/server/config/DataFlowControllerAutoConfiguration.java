@@ -49,6 +49,8 @@ import org.springframework.cloud.dataflow.server.controller.RestControllerAdvice
 import org.springframework.cloud.dataflow.server.controller.RootController;
 import org.springframework.cloud.dataflow.server.controller.RuntimeAppsController;
 import org.springframework.cloud.dataflow.server.controller.RuntimeAppsController.AppInstanceController;
+import org.springframework.cloud.dataflow.server.controller.StandaloneDefinitionController;
+import org.springframework.cloud.dataflow.server.controller.StandaloneDeploymentController;
 import org.springframework.cloud.dataflow.server.controller.StreamDefinitionController;
 import org.springframework.cloud.dataflow.server.controller.StreamDeploymentController;
 import org.springframework.cloud.dataflow.server.controller.TaskDefinitionController;
@@ -58,6 +60,7 @@ import org.springframework.cloud.dataflow.server.controller.UiController;
 import org.springframework.cloud.dataflow.server.controller.security.LoginController;
 import org.springframework.cloud.dataflow.server.controller.security.SecurityController;
 import org.springframework.cloud.dataflow.server.repository.DeploymentIdRepository;
+import org.springframework.cloud.dataflow.server.repository.StandaloneDefinitionRepository;
 import org.springframework.cloud.dataflow.server.repository.StreamDefinitionRepository;
 import org.springframework.cloud.dataflow.server.repository.TaskDefinitionRepository;
 import org.springframework.cloud.dataflow.server.service.TaskJobService;
@@ -83,6 +86,7 @@ import org.springframework.hateoas.EntityLinks;
  * @author Mark Fisher
  * @author Gunnar Hillert
  * @author Ilayaperumal Gopinathan
+ * @author Donovan Muller
  */
 @SuppressWarnings("all")
 @Configuration
@@ -111,6 +115,28 @@ public class DataFlowControllerAutoConfiguration {
 		return new AppInstanceController(appDeployer);
 	}
 
+    @Bean
+    @ConditionalOnBean(StandaloneDefinitionRepository.class)
+    public StandaloneDefinitionController standaloneDefinitionController(StandaloneDefinitionRepository repository,
+            DeploymentIdRepository deploymentIdRepository,
+            StandaloneDeploymentController deploymentController,
+            AppDeployer deployer,
+            AppRegistry appRegistry) {
+        return new StandaloneDefinitionController(repository, deploymentIdRepository, deploymentController, deployer,
+                appRegistry);
+    }
+
+    @Bean
+    @ConditionalOnBean(StandaloneDefinitionRepository.class)
+    public StandaloneDeploymentController standaloneDeploymentController(StandaloneDefinitionRepository repository,
+            DeploymentIdRepository deploymentIdRepository,
+            AppRegistry registry,
+            AppDeployer deployer,
+            ApplicationConfigurationMetadataResolver metadataResolver,
+            CommonApplicationProperties appsProperties) {
+        return new StandaloneDeploymentController(repository, deploymentIdRepository, registry, deployer, metadataResolver, appsProperties);
+    }
+
 	@Bean
 	@ConditionalOnBean(StreamDefinitionRepository.class)
 	public StreamDefinitionController streamDefinitionController(StreamDefinitionRepository repository,
@@ -130,9 +156,11 @@ public class DataFlowControllerAutoConfiguration {
 
 	@Bean
 	@ConditionalOnBean(StreamDefinitionRepository.class)
-	public RuntimeAppsController runtimeAppsController(StreamDefinitionRepository repository,
-													   DeploymentIdRepository deploymentIdRepository, AppDeployer appDeployer) {
-		return new RuntimeAppsController(repository, deploymentIdRepository, appDeployer);
+    public RuntimeAppsController runtimeAppsController(StandaloneDefinitionRepository standaloneDefinitionRepository,
+            StreamDefinitionRepository repository,
+            DeploymentIdRepository deploymentIdRepository,
+            AppDeployer appDeployer) {
+        return new RuntimeAppsController(standaloneDefinitionRepository, repository, deploymentIdRepository, appDeployer);
 	}
 
 	@Bean
