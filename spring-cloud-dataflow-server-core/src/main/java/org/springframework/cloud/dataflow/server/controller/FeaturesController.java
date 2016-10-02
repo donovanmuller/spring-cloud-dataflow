@@ -41,6 +41,7 @@ public class FeaturesController {
 		featuresInfoResource.setAnalyticsEnabled(featuresProperties.isAnalyticsEnabled());
 		featuresInfoResource.setStreamsEnabled(featuresProperties.isStreamsEnabled());
 		featuresInfoResource.setTasksEnabled(featuresProperties.isTasksEnabled());
+		featuresInfoResource.setStandaloneEnabled(featuresProperties.isStandaloneEnabled());
 		return featuresInfoResource;
 	}
 }

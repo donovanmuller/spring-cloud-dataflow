@@ -22,8 +22,14 @@ package org.springframework.cloud.dataflow.rest.client;
  * @author Ilayaperumal Gopinathan
  * @author Glenn Renfro
  * @author Mark Fisher
+ * @author Donovan Muller
  */
 public interface DataFlowOperations {
+
+	/**
+	 * Standalone application related operations.
+	 */
+	StandaloneOperations standaloneOperations();
 
 	/**
 	 * Stream related operations.
