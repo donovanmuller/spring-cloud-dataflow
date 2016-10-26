@@ -21,6 +21,8 @@ import java.util.Map;
 
 import javax.sql.DataSource;
 
+import org.springframework.analytics.metrics.AggregateCounterRepository;
+import org.springframework.analytics.metrics.FieldValueCounterRepository;
 import org.springframework.analytics.rest.controller.AggregateCounterController;
 import org.springframework.analytics.rest.controller.CounterController;
 import org.springframework.analytics.rest.controller.FieldValueCounterController;
@@ -71,8 +73,6 @@ import org.springframework.cloud.deployer.resource.registry.UriRegistry;
 import org.springframework.cloud.deployer.resource.support.DelegatingResourceLoader;
 import org.springframework.cloud.deployer.spi.app.AppDeployer;
 import org.springframework.cloud.deployer.spi.task.TaskLauncher;
-import org.springframework.analytics.metrics.AggregateCounterRepository;
-import org.springframework.analytics.metrics.FieldValueCounterRepository;
 import org.springframework.cloud.task.repository.TaskExplorer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -156,11 +156,11 @@ public class DataFlowControllerAutoConfiguration {
 
 	@Bean
 	@ConditionalOnBean(StreamDefinitionRepository.class)
-    public RuntimeAppsController runtimeAppsController(StandaloneDefinitionRepository standaloneDefinitionRepository,
-            StreamDefinitionRepository repository,
-            DeploymentIdRepository deploymentIdRepository,
-            AppDeployer appDeployer) {
-        return new RuntimeAppsController(standaloneDefinitionRepository, repository, deploymentIdRepository, appDeployer);
+	public RuntimeAppsController runtimeAppsController(StandaloneDefinitionRepository standaloneDefinitionRepository,
+			StreamDefinitionRepository repository, DeploymentIdRepository deploymentIdRepository,
+			AppDeployer appDeployer, FeaturesProperties featuresProperties) {
+		return new RuntimeAppsController(standaloneDefinitionRepository, repository, deploymentIdRepository,
+				appDeployer, featuresProperties);
 	}
 
 	@Bean

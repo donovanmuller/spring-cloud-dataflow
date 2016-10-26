@@ -26,6 +26,7 @@ import org.springframework.cloud.dataflow.core.StreamAppDefinition;
 import org.springframework.cloud.dataflow.core.StreamDefinition;
 import org.springframework.cloud.dataflow.rest.resource.AppInstanceStatusResource;
 import org.springframework.cloud.dataflow.rest.resource.AppStatusResource;
+import org.springframework.cloud.dataflow.server.config.features.FeaturesProperties;
 import org.springframework.cloud.dataflow.server.repository.DeploymentIdRepository;
 import org.springframework.cloud.dataflow.server.repository.DeploymentKey;
 import org.springframework.cloud.dataflow.server.repository.StandaloneDefinitionRepository;
@@ -89,27 +90,30 @@ public class RuntimeAppsController {
 
 	private final ResourceAssembler<AppStatus, AppStatusResource> statusAssembler = new Assembler();
 
+	private final FeaturesProperties featuresProperties;
+
 	/**
 	 * Instantiates a new runtime apps controller.
-	 *
 	 * @param standaloneDefinitionRepository the repository this controller will use for standalone application CRUD operations
 	 * @param streamDefinitionRepository the repository this controller will use for stream CRUD operations
 	 * @param deploymentIdRepository the repository this controller will use for deployment IDs
 	 * @param appDeployer the deployer this controller will use to deploy stream apps
+	 * @param featuresProperties
 	 */
-    public RuntimeAppsController(StandaloneDefinitionRepository standaloneDefinitionRepository,
-            StreamDefinitionRepository streamDefinitionRepository,
-            DeploymentIdRepository deploymentIdRepository,
-            AppDeployer appDeployer) {
-        Assert.notNull(standaloneDefinitionRepository, "StandaloneDefinitionRepository must not be null");
-        Assert.notNull(streamDefinitionRepository, "StreamDefinitionRepository must not be null");
-        Assert.notNull(deploymentIdRepository, "DeploymentIdRepository must not be null");
-        Assert.notNull(appDeployer, "AppDeployer must not be null");
-        this.standaloneDefinitionRepository = standaloneDefinitionRepository;
-        this.streamDefinitionRepository = streamDefinitionRepository;
-        this.deploymentIdRepository = deploymentIdRepository;
-        this.appDeployer = appDeployer;
-    }
+	public RuntimeAppsController(StandaloneDefinitionRepository standaloneDefinitionRepository,
+			StreamDefinitionRepository streamDefinitionRepository, DeploymentIdRepository deploymentIdRepository,
+			AppDeployer appDeployer, FeaturesProperties featuresProperties) {
+		Assert.notNull(standaloneDefinitionRepository, "StandaloneDefinitionRepository must not be null");
+		Assert.notNull(streamDefinitionRepository, "StreamDefinitionRepository must not be null");
+		Assert.notNull(deploymentIdRepository, "DeploymentIdRepository must not be null");
+		Assert.notNull(appDeployer, "AppDeployer must not be null");
+		Assert.notNull(featuresProperties, "FeaturesProperties must not be null");
+		this.standaloneDefinitionRepository = standaloneDefinitionRepository;
+		this.streamDefinitionRepository = streamDefinitionRepository;
+		this.deploymentIdRepository = deploymentIdRepository;
+		this.appDeployer = appDeployer;
+		this.featuresProperties = featuresProperties;
+	}
 
 	@RequestMapping
 	public PagedResources<AppStatusResource> list(PagedResourcesAssembler<AppStatus> assembler) {
@@ -123,10 +127,12 @@ public class RuntimeAppsController {
 				}
 			}
 		}
-		for (StandaloneDefinition standaloneDefinition : this.standaloneDefinitionRepository.findAll()) {
-			String id = this.deploymentIdRepository.findOne(DeploymentKey.forStandaloneAppDefinition(standaloneDefinition));
-			if (id != null) {
-				values.add(appDeployer.status(id));
+		if (featuresProperties.isStandaloneEnabled()) {
+			for (StandaloneDefinition standaloneDefinition : this.standaloneDefinitionRepository.findAll()) {
+				String id = this.deploymentIdRepository.findOne(DeploymentKey.forStandaloneAppDefinition(standaloneDefinition));
+				if (id != null) {
+					values.add(appDeployer.status(id));
+				}
 			}
 		}
 		Collections.sort(values, new Comparator<AppStatus>() {
