@@ -39,6 +39,8 @@ public class FeaturesInfoResource extends ResourceSupport {
 
 	private boolean standaloneEnabled;
 
+	private boolean applicationGroupsEnabled;
+
 	public boolean isAnalyticsEnabled() {
 		return this.analyticsEnabled;
 	}
@@ -69,5 +71,13 @@ public class FeaturesInfoResource extends ResourceSupport {
 
 	public boolean isStandaloneEnabled() {
 		return standaloneEnabled;
+	}
+
+	public void setApplicationGroupsEnabled(boolean applicationGroupsEnabled) {
+		this.applicationGroupsEnabled = applicationGroupsEnabled;
+	}
+
+	public boolean isApplicationGroupsEnabled() {
+		return applicationGroupsEnabled;
 	}
 }

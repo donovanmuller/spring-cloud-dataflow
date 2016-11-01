@@ -42,6 +42,7 @@ public class FeaturesController {
 		featuresInfoResource.setStreamsEnabled(featuresProperties.isStreamsEnabled());
 		featuresInfoResource.setTasksEnabled(featuresProperties.isTasksEnabled());
 		featuresInfoResource.setStandaloneEnabled(featuresProperties.isStandaloneEnabled());
+		featuresInfoResource.setApplicationGroupsEnabled(featuresProperties.isApplicationGroupsEnabled());
 		return featuresInfoResource;
 	}
 }
