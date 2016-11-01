@@ -63,7 +63,6 @@ public class FeaturesInfoResource extends ResourceSupport {
 		this.tasksEnabled = tasksEnabled;
 	}
 
-
 	public void setStandaloneEnabled(boolean standaloneEnabled) {
 		this.standaloneEnabled = standaloneEnabled;
 	}
