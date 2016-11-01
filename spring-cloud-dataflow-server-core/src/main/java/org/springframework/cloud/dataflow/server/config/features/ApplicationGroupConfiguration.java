@@ -30,8 +30,10 @@ import org.springframework.cloud.dataflow.server.service.impl.ApplicationGroupRe
 import org.springframework.cloud.deployer.resource.maven.MavenProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 
 @Configuration
+@Import(StandaloneConfiguration.class)
 @ConditionalOnProperty(prefix = FeaturesProperties.FEATURES_PREFIX, name = FeaturesProperties.APPLICATION_GROUPS_ENABLED)
 public class ApplicationGroupConfiguration {
 

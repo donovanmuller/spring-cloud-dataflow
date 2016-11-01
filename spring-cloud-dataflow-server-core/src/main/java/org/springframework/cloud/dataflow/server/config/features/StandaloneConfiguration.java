@@ -17,8 +17,8 @@ package org.springframework.cloud.dataflow.server.config.features;
 
 import javax.sql.DataSource;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cloud.dataflow.server.repository.RdbmsStandaloneDefinitionRepository;
 import org.springframework.cloud.dataflow.server.repository.StandaloneDefinitionRepository;
 import org.springframework.context.annotation.Bean;
@@ -28,7 +28,15 @@ import org.springframework.context.annotation.Configuration;
  * @author Donovan Muller
  */
 @Configuration
-@ConditionalOnProperty(prefix = FeaturesProperties.FEATURES_PREFIX, name = FeaturesProperties.STANDALONE_ENABLED)
+// If the application group feature is enabled then the standalone feature is automatically enabled by default
+// as the two are seen as complimentary
+@ConditionalOnExpression("#{"
+			+ "'${" + FeaturesProperties.FEATURES_PREFIX + "." + FeaturesProperties.STANDALONE_ENABLED
+			+ ":true}'.equalsIgnoreCase('true') "
+			+ "|| "
+			+ "'${" + FeaturesProperties.FEATURES_PREFIX + "." + FeaturesProperties.APPLICATION_GROUPS_ENABLED
+			+ ":true}'.equalsIgnoreCase('true')" +
+		"}")
 public class StandaloneConfiguration {
 
 	@Bean
