@@ -77,7 +77,8 @@ public class StandaloneCommands implements CommandMarker {
 			DESTROY_STANDALONE_ALL})
 	public boolean available() {
 		DataFlowOperations dataFlowOperations = dataFlowShell.getDataFlowOperations();
-		return dataFlowOperations != null && dataFlowOperations.standaloneOperations() != null;
+		return dataFlowOperations != null && (dataFlowOperations.standaloneOperations() != null
+				|| dataFlowOperations.applicationGroupOperations() != null);
 	}
 
 	@CliCommand(value = LIST_STANDALONE, help = "List standalone applications")

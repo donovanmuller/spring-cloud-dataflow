@@ -115,7 +115,7 @@ public final class DataflowRdbmsInitializer implements InitializingBean {
 						platform));
 				populator.addScript(resourceLoader.getResource(applicationGroupSchemaLocation));
 			}
-			if (featuresProperties.isStandaloneEnabled()) {
+			if (featuresProperties.isStandaloneEnabled() || featuresProperties.isApplicationGroupsEnabled()) {
 				String standaloneSchemaLocation = schemaLocation;
 				standaloneSchemaLocation = standaloneSchemaLocation.replace("@@suffix@@", STANDALONE_SCHEMA_SUFFIX);
 				logger.info(String.format("Adding dataflow schema %s for %s database", standaloneSchemaLocation,

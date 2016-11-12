@@ -128,7 +128,7 @@ public class RuntimeAppsController {
 				}
 			}
 		}
-		if (featuresProperties.isStandaloneEnabled()) {
+		if (featuresProperties.isStandaloneEnabled() || featuresProperties.isApplicationGroupsEnabled()) {
 			for (StandaloneDefinition standaloneDefinition : this.standaloneDefinitionRepository.findAll()) {
 				String id = this.deploymentIdRepository.findOne(DeploymentKey.forStandaloneAppDefinition(standaloneDefinition));
 				if (id != null) {

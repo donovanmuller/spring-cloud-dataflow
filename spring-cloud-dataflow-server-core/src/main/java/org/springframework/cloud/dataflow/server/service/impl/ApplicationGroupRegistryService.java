@@ -11,6 +11,7 @@ import org.springframework.cloud.dataflow.server.controller.StandaloneDefinition
 import org.springframework.cloud.dataflow.server.controller.StandaloneDeploymentController;
 import org.springframework.cloud.dataflow.server.controller.StreamDefinitionController;
 import org.springframework.cloud.dataflow.server.controller.StreamDeploymentController;
+import org.springframework.cloud.dataflow.server.repository.NoSuchStreamDefinitionException;
 import org.springframework.cloud.deployer.resource.maven.MavenProperties;
 import org.springframework.cloud.deployer.resource.maven.MavenResource;
 import org.springframework.core.io.ByteArrayResource;
@@ -97,11 +98,23 @@ public class ApplicationGroupRegistryService {
 		}
 
 		for (ApplicationGroupDescriptor.Standalone standalone : descriptor.getStandalone()) {
-			standaloneDefinitionController.update(standalone.getName(), standalone.getDsl(), false);
+			try {
+				standaloneDefinitionController.update(standalone.getName(), standalone.getDsl(), false);
+			} catch (NoSuchStreamDefinitionException e) {
+				logger.info("Standalone application '{}' does not exist, creating new standalone application",
+						standalone.getName());
+				standaloneDefinitionController.save(standalone.getName(), standalone.getDsl(), false, false);
+			}
 		}
 
 		for (ApplicationGroupDescriptor.Stream stream : descriptor.getStream()) {
-			streamDefinitionController.update(stream.getName(), stream.getDsl(), false);
+			try {
+				streamDefinitionController.update(stream.getName(), stream.getDsl(), false);
+			} catch (NoSuchStreamDefinitionException e) {
+				logger.info("Stream '{}' does not exist, creating new stream",
+						stream.getName());
+				streamDefinitionController.save(stream.getName(), stream.getDsl(), false);
+			}
 		}
 
 		// TODO tasks

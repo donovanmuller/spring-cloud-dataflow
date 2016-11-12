@@ -95,7 +95,7 @@ public class RootController {
 			resourceSupport.add(entityLinks.linkToCollectionResource(ApplicationGroupDeploymentResource.class).withRel("application-groups/deployments"));
 			resourceSupport.add(unescapeTemplateVariables(entityLinks.linkToSingleResource(ApplicationGroupDeploymentResource.class, "{name}").withRel("application-groups/deployments/deployment")));
 		}
-		if (featuresProperties.isStandaloneEnabled()) {
+		if (featuresProperties.isStandaloneEnabled() || featuresProperties.isApplicationGroupsEnabled()) {
 			resourceSupport.add(entityLinks.linkToCollectionResource(StandaloneDefinitionResource.class).withRel("standalone/definitions"));
 			resourceSupport.add(unescapeTemplateVariables(entityLinks.linkToSingleResource(StandaloneDefinitionResource.class, "{name}").withRel("standalone/definitions/definition")));
 			resourceSupport.add(entityLinks.linkToCollectionResource(StandaloneDeploymentResource.class).withRel("standalone/deployments"));

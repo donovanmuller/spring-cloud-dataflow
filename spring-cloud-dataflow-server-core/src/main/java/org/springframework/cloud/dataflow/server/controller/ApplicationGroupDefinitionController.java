@@ -149,6 +149,7 @@ public class ApplicationGroupDefinitionController {
 	 * Create a new application group.
 	 *
 	 * @param name   application group name
+	 * @param uri    the URI of a Maven resource that contains a application group descriptor
 	 * @param dsl    DSL definition for an application group
 	 * @param deploy if {@code true}, the application group is deployed upon creation (default is {@code false})
 	 */
